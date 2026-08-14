@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GBIF Backbone → COL 26.5 XR mapping — analysis</title>
+<style>
+  :root {
+    --fg: #1b1b1b;
+    --muted: #5c6b73;
+    --accent: #4a7c2f;
+    --border: #e1e4e8;
+    --code-bg: #f4f6f8;
+    --row-alt: #fafbfc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: var(--fg);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .4rem; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 2.2rem 0 .6rem;
+    padding-bottom: .3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.02rem; margin: 1.4rem 0 .4rem; color: var(--muted); }
+  p { margin: .6rem 0; }
+  a { color: var(--accent); text-decoration: none; word-break: break-word; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: .12em .38em;
+    border-radius: 4px;
+    font-size: .88em;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: .6rem 0 1rem;
+    font-size: .93rem;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: .45rem .6rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  ul { margin: .5rem 0; padding-left: 1.3rem; }
+  li { margin: .3rem 0; }
+  .lede { color: var(--muted); font-size: 1.02rem; }
+  .note {
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    padding: .7rem .9rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: .95rem;
+  }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<h1>GBIF Backbone → COL 26.5 XR mapping — analysis</h1>
+<p class="lede">Review of <code>gbif-col265.tsv</code> — 7,746,724 rows, 30 columns,
+~3.9 GB. Basic match metrics, <code>matchType</code> / <code>matchIssues</code>
+distributions, and patterns behind the no-matches.</p>
+
+<div class="note">
+<strong>UNITE SH OTUs excluded.</strong> 609,269 rows are UNITE Species Hypothesis
+OTU identifiers used as names (<code>gbif:scientificName</code> matching
+<code>^SH\d+\.\d+FU</code>, e.g. <code>SH220494.07FU</code>, rank
+<code>unranked</code>). The version suffix differs between GBIF and COL, so all
+609,269 are no-matches by construction (100%). They are removed from every metric
+below. <strong>Working total: 7,137,455 rows.</strong>
+</div>
+
+<h2>0. Identifier-as-name artefacts</h2>
+<p>Three families of “names” are really external identifiers. They behave very
+differently against COL:</p>
+<table>
+  <thead><tr><th>Artefact</th><th>Detection</th><th class="num">Rows</th><th class="num">No-match</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>UNITE SH OTUs</td><td><code>^SH\d+\.\d+FU</code></td><td class="num">609,269</td><td class="num">100%</td><td><strong>Excluded</strong> — version differs (GBIF 09 vs COL 10), can never match.</td></tr>
+    <tr><td>BOLD BINs</td><td><code>^BOLD:</code></td><td class="num">617,160</td><td class="num">0.4%</td><td><strong>Kept</strong> — present in COL, match almost perfectly. Not a no-match source.</td></tr>
+    <tr><td>GTDB placeholders</td><td>kingdom Bacteria/Archaea AND (name has a digit OR ends <code>_&lt;CAPS&gt;</code>)</td><td class="num">40,473</td><td class="num">100%</td><td>Deterministic non-matches; not wanted in COL.</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>BOLD</strong>: 617,160 BIN-as-name rows exist and 99.6% map to COL
+  (only 2,391 misses). A non-issue.</li>
+  <li><strong>GTDB</strong>: prokaryote nomenclature (ICNP) never uses digits, so
+  within Bacteria/Archaea any name with a digit — or a <code>_A</code>/<code>_B</code>-style
+  suffix — is a GTDB placeholder. This catches uninomial codes (<code>ARS69</code>,
+  <code>CAIJMQ01</code>, <code>2-02-FULL-45-22_A</code>), pure <code>_CAPS</code> splits
+  (<code>Bacillus_D</code>, <code>Myxococcota_A</code>, <code>Desulfobacterota_C</code>) and
+  binomial placeholders (<code>… sp002774085</code>, 28,514 of them).
+  By rank: species 28,565, genus 8,877, family 1,919, order 818, class 202, phylum 92.
+  By kingdom: Bacteria 37,311, Archaea 3,162.</li>
+  <li>GTDB placeholders explain <strong>79% of all Bacteria/Archaea no-matches</strong>
+  (40,473 of 51,127). The remainder are pure-letter GTDB names with no digit or
+  suffix and so cannot be detected by pattern — this count is a lower bound.</li>
+</ul>
+
+<h2>1. Match outcome <span style="font-weight:400;color:var(--muted);font-size:.9rem">(SH OTUs excluded)</span></h2>
+<table>
+  <thead><tr><th>Outcome</th><th class="num">Rows</th><th class="num">Share</th></tr></thead>
+  <tbody>
+    <tr><td>Matched to COL</td><td class="num">5,810,113</td><td class="num">81.4%</td></tr>
+    <tr><td>No match</td><td class="num">1,327,342</td><td class="num">18.6%</td></tr>
+  </tbody>
+</table>
+<p>With the SH OTUs included the match rate is 75.0%; removing them lifts it to
+<strong>81.4%</strong>; additionally removing the 40,473 GTDB placeholders (all
+deterministic misses) lifts it to <strong>81.9%</strong> (5,810,113 / 7,096,982).</p>
+
+<h3>matchType</h3>
+<table>
+  <thead><tr><th>matchType</th><th class="num">Rows</th><th class="num">Share</th></tr></thead>
+  <tbody>
+    <tr><td><code>exact</code></td><td class="num">4,967,502</td><td class="num">69.6%</td></tr>
+    <tr><td><code>variant</code></td><td class="num">815,950</td><td class="num">11.4%</td></tr>
+    <tr><td><code>ambiguous</code></td><td class="num">26,661</td><td class="num">0.4%</td></tr>
+    <tr><td><code>none</code></td><td class="num">1,292,771</td><td class="num">18.1%</td></tr>
+    <tr><td>(blank)</td><td class="num">34,571</td><td class="num">0.5%</td></tr>
+  </tbody>
+</table>
+<p><code>exact</code> + <code>variant</code> + <code>ambiguous</code> = matched;
+<code>none</code> + blank = unmatched (blank = matching apparently not attempted).</p>
+
+<h3>matchIssues</h3>
+<p>Negligible — only ~13,032 rows file-wide (&lt;0.2%) carry any flag, almost
+entirely name-parsing noise (<code>INDETERMINED</code>,
+<code>PARTIALLY_PARSABLE_NAME</code>, <code>UNPARSABLE_NAME</code>). Not a
+meaningful driver of anything.</p>
+
+<h2>2. What matched rows resolve to (col:status)</h2>
+<table>
+  <thead><tr><th>col:status</th><th class="num">Rows</th><th class="num">Share of matched</th></tr></thead>
+  <tbody>
+    <tr><td>accepted</td><td class="num">3,064,120</td><td class="num">52.7%</td></tr>
+    <tr><td>synonym</td><td class="num">2,498,133</td><td class="num">43.0%</td></tr>
+    <tr><td>ambiguous synonym</td><td class="num">124,263</td><td class="num">2.1%</td></tr>
+    <tr><td>provisionally accepted</td><td class="num">120,967</td><td class="num">2.1%</td></tr>
+    <tr><td>misapplied</td><td class="num">2,630</td><td class="num">0.05%</td></tr>
+  </tbody>
+</table>
+<p>~47% of matches point to a non-accepted COL name; for those, follow
+<code>col:acceptedID</code> / <code>col:acceptedScientificName</code> rather than
+<code>col:ID</code>.</p>
+
+<h2>3. No-match patterns <span style="font-weight:400;color:var(--muted);font-size:.9rem">(SH OTUs excluded)</span></h2>
+
+<h3>By kingdom</h3>
+<table>
+  <thead><tr><th>Kingdom</th><th class="num">Total</th><th class="num">No-match</th><th class="num">Rate</th></tr></thead>
+  <tbody>
+    <tr><td>Animalia</td><td class="num">4,432,182</td><td class="num">650,880</td><td class="num">14.7%</td></tr>
+    <tr><td>Plantae</td><td class="num">1,989,382</td><td class="num">476,264</td><td class="num">23.9%</td></tr>
+    <tr><td>Fungi</td><td class="num">397,510</td><td class="num">45,710</td><td class="num">11.5%</td></tr>
+    <tr><td>Chromista</td><td class="num">205,793</td><td class="num">88,604</td><td class="num">43.1%</td></tr>
+    <tr><td>Viruses</td><td class="num">19,641</td><td class="num">8,156</td><td class="num">41.5%</td></tr>
+    <tr><td>Protozoa</td><td class="num">13,729</td><td class="num">4,545</td><td class="num">33.1%</td></tr>
+    <tr><td>Bacteria</td><td class="num">72,136</td><td class="num">47,559</td><td class="num">65.9%</td></tr>
+    <tr><td>Archaea</td><td class="num">4,468</td><td class="num">3,568</td><td class="num">79.9%</td></tr>
+    <tr><td>incertae sedis</td><td class="num">2,605</td><td class="num">2,052</td><td class="num">78.8%</td></tr>
+  </tbody>
+</table>
+<p>Removing the SH OTUs collapses the apparent Fungi problem (60% → 11.5%); the
+high Bacteria/Archaea rates are ~79% GTDB placeholders (see §0).</p>
+
+<h3>By rank</h3>
+<table>
+  <thead><tr><th>Rank</th><th class="num">Total</th><th class="num">No-match</th><th class="num">Rate</th></tr></thead>
+  <tbody>
+    <tr><td>species</td><td class="num">4,994,322</td><td class="num">929,605</td><td class="num">18.6%</td></tr>
+    <tr><td>genus</td><td class="num">547,518</td><td class="num">146,645</td><td class="num">26.8%</td></tr>
+    <tr><td>variety</td><td class="num">421,934</td><td class="num">87,057</td><td class="num">20.6%</td></tr>
+    <tr><td>subspecies</td><td class="num">380,481</td><td class="num">82,181</td><td class="num">21.6%</td></tr>
+    <tr><td>unranked</td><td class="num">666,605</td><td class="num">50,345</td><td class="num">7.6%</td></tr>
+    <tr><td>form</td><td class="num">87,936</td><td class="num">22,881</td><td class="num">26.0%</td></tr>
+    <tr><td>family</td><td class="num">34,356</td><td class="num">7,037</td><td class="num">20.5%</td></tr>
+    <tr><td>order</td><td class="num">3,092</td><td class="num">1,076</td><td class="num">34.8%</td></tr>
+    <tr><td>class</td><td class="num">845</td><td class="num">316</td><td class="num">37.4%</td></tr>
+    <tr><td>phylum</td><td class="num">347</td><td class="num">195</td><td class="num">56.2%</td></tr>
+  </tbody>
+</table>
+<p><code>unranked</code> drops from 51.7% to 7.6% once SH OTUs are removed.</p>
+
+<h3>By gbif:status (strongest remaining signal)</h3>
+<table>
+  <thead><tr><th>gbif:status</th><th class="num">Total</th><th class="num">No-match</th><th class="num">Rate</th></tr></thead>
+  <tbody>
+    <tr><td>accepted</td><td class="num">3,795,210</td><td class="num">588,224</td><td class="num">15.5%</td></tr>
+    <tr><td>synonym</td><td class="num">3,030,793</td><td class="num">547,560</td><td class="num">18.1%</td></tr>
+    <tr><td>provisionally accepted</td><td class="num">292,906</td><td class="num">188,396</td><td class="num">64.3%</td></tr>
+    <tr><td>ambiguous synonym</td><td class="num">18,546</td><td class="num">3,162</td><td class="num">17.0%</td></tr>
+  </tbody>
+</table>
+
+<h3>By taxGroup (selected)</h3>
+<table>
+  <thead><tr><th>taxGroup</th><th class="num">Total</th><th class="num">No-match</th><th class="num">Rate</th></tr></thead>
+  <tbody>
+    <tr><td>diptera</td><td class="num">434,653</td><td class="num">28,792</td><td class="num">6.6%</td></tr>
+    <tr><td>lepidoptera</td><td class="num">553,950</td><td class="num">49,398</td><td class="num">8.9%</td></tr>
+    <tr><td>ascomycetes</td><td class="num">250,866</td><td class="num">27,533</td><td class="num">11.0%</td></tr>
+    <tr><td>hymenoptera</td><td class="num">385,221</td><td class="num">44,063</td><td class="num">11.4%</td></tr>
+    <tr><td>coleoptera</td><td class="num">767,552</td><td class="num">104,588</td><td class="num">13.6%</td></tr>
+    <tr><td>arachnids</td><td class="num">212,874</td><td class="num">30,356</td><td class="num">14.3%</td></tr>
+    <tr><td>gastropods</td><td class="num">326,327</td><td class="num">52,095</td><td class="num">16.0%</td></tr>
+    <tr><td>chordates</td><td class="num">424,423</td><td class="num">99,245</td><td class="num">23.4%</td></tr>
+    <tr><td>angiosperms</td><td class="num">1,717,697</td><td class="num">410,970</td><td class="num">23.9%</td></tr>
+    <tr><td>pteridophytes</td><td class="num">86,511</td><td class="num">26,048</td><td class="num">30.1%</td></tr>
+    <tr><td>bacteria</td><td class="num">72,137</td><td class="num">47,560</td><td class="num">65.9%</td></tr>
+    <tr><td>algae</td><td class="num">126,407</td><td class="num">89,997</td><td class="num">71.2%</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Takeaways</h2>
+<ul>
+  <li>After removing the 609k UNITE SH OTUs (a deterministic, expected miss), the
+  match rate is <strong>81.4%</strong>; matchIssue flags are negligible.</li>
+  <li>~47% of matches resolve to a COL synonym/ambiguous/misapplied name — use
+  <code>col:acceptedID</code>, not <code>col:ID</code>, for those.</li>
+  <li>Identifier-as-name artefacts account for a large, deterministic chunk of the
+  misses: UNITE SH OTUs (609k, removed) and GTDB placeholders (40k) are simply not
+  meant to be in COL. BOLD BINs (617k) are <em>not</em> a problem — they match.</li>
+  <li>Remaining (real) no-matches are systematic, concentrated in:
+    <ol>
+      <li><code>provisionally accepted</code> backbone names — 64% miss (auto-generated names COL doesn't carry);</li>
+      <li>microbial lineages — Bacteria 66% and Archaea 80%, but ~79% of those are GTDB placeholders; the true unexplained prokaryote residual is only ~10.6k rows;</li>
+      <li>algae 71% and Chromista 43% (protist/algal checklists less covered);</li>
+      <li>high ranks (phylum 56%, class 37%, order 35%) — small counts, poorly aligned;</li>
+      <li>genus-level names (27%) and <code>incertae sedis</code> (79%).</li>
+    </ol>
+  </li>
+  <li>Curated animal groups (diptera 6.6%, lepidoptera 8.9%, hymenoptera 11.4%) and
+  fungi-once-OTUs-are-removed (11.5%) match well — the gaps track the
+  loosely-sourced parts of the old backbone that COL's vetted sources don't cover.</li>
+</ul>
+
+<footer>
+Source file: <code>gbif-col265.tsv</code> · GBIF Backbone Taxonomy (28 August 2023)
+→ Catalogue of Life 26.5 Extended Release.
+</footer>
+
+</body>
+</html>

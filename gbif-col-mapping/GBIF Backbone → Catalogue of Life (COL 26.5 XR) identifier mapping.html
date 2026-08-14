@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GBIF Backbone → Catalogue of Life (COL 26.5 XR) identifier mapping</title>
+<style>
+  :root {
+    --fg: #1b1b1b;
+    --muted: #5c6b73;
+    --accent: #4a7c2f;
+    --border: #e1e4e8;
+    --code-bg: #f4f6f8;
+    --row-alt: #fafbfc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: var(--fg);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .4rem; }
+  h2 {
+    font-size: 1.25rem;
+    margin: 2.2rem 0 .6rem;
+    padding-bottom: .3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.02rem; margin: 1.4rem 0 .4rem; color: var(--muted); }
+  p { margin: .6rem 0; }
+  a { color: var(--accent); text-decoration: none; word-break: break-word; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: .12em .38em;
+    border-radius: 4px;
+    font-size: .88em;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: .6rem 0 1rem;
+    font-size: .93rem;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: .45rem .6rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  ul { margin: .5rem 0; padding-left: 1.3rem; }
+  li { margin: .3rem 0; }
+  .lede { color: var(--muted); font-size: 1.02rem; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .8rem 1rem;
+    overflow-x: auto;
+    font-size: .85rem;
+    line-height: 1.45;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .sources li { margin: .6rem 0; }
+  .sources ul { margin-top: .3rem; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<h1>GBIF Backbone → Catalogue of Life (COL 26.5 XR) identifier mapping</h1>
+
+<p class="lede">This <a href="gbif-col265.tsv.gz">TSV file gbif-col265.tsv.gz</a> maps taxon identifiers from the legacy <strong>GBIF Backbone
+Taxonomy</strong> (integer <code>usageKey</code>s) to the corresponding taxa in the
+<strong>Catalogue of Life 26.5 Extended Release (COL 26.5 XR)</strong> (alphanumeric
+identifiers). It lets you translate any record, link, or analysis keyed on old GBIF
+backbone IDs to the taxonomy that GBIF now uses by default.</p>
+
+<h2 id="why">Why this mapping exists</h2>
+<p>GBIF has discontinued the periodic build of its own backbone taxonomy and switched
+its primary taxonomy to the Catalogue of Life Extended Release. The old GBIF Backbone
+is frozen but kept available for backwards compatibility, and every occurrence is now
+matched against both taxonomies in parallel. Anyone with existing data, code, or
+persistent links built on the integer backbone keys needs a crosswalk to the new COL
+identifiers — that is what this file provides.</p>
+
+<h2 id="identifier">Identifier formats</h2>
+<p>The two taxonomies use different, non-overlapping identifier schemes, so the source
+of any key is unambiguous:</p>
+<ul>
+  <li><strong>GBIF Backbone</strong> — integer keys, e.g. <code>2979180</code>
+  (<em>Acacia acuminata</em>). This mapping uses the last published version of the
+  GBIF Backbone Taxonomy (28 August 2023), which is its final release before the
+  build was discontinued.</li>
+  <li><strong>COL 26.5 XR</strong> — short alphanumeric keys, e.g. <code>8NQF</code>
+  (<em>Acacia acuminata</em>).</li>
+</ul>
+
+<h2 id="structure">File structure</h2>
+<p>Tab-separated values (TSV), one row per GBIF backbone usage, with a header row. Each
+row carries the source taxon from the GBIF Backbone (<code>gbif:</code> columns) and the
+taxon it was matched to in COL 26.5 XR (<code>col:</code> columns).</p>
+
+<h3>GBIF Backbone (source)</h3>
+<table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>gbif:ID</code></td><td>Integer usage key in the GBIF Backbone Taxonomy.</td></tr>
+    <tr><td><code>gbif:status</code></td><td>Taxonomic status in the backbone (e.g. <code>accepted</code>, <code>provisionally accepted</code>).</td></tr>
+    <tr><td><code>gbif:rank</code></td><td>Taxonomic rank (e.g. <code>kingdom</code>, <code>genus</code>, <code>species</code>).</td></tr>
+    <tr><td><code>gbif:scientificName</code></td><td>Scientific name (canonical, without authorship).</td></tr>
+    <tr><td><code>gbif:authorship</code></td><td>Name authorship.</td></tr>
+    <tr><td><code>gbif:kingdom</code> … <code>gbif:genus</code></td><td>Higher classification (<code>kingdom</code>, <code>phylum</code>, <code>class</code>, <code>order</code>, <code>family</code>, <code>genus</code>).</td></tr>
+    <tr><td><code>gbif:species</code></td><td>Parent species name for infraspecific records.</td></tr>
+  </tbody>
+</table>
+
+<h3>COL 26.5 XR (target)</h3>
+<table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>col:ID</code></td><td>Alphanumeric identifier of the matched name in COL 26.5 XR.</td></tr>
+    <tr><td><code>col:rank</code></td><td>Rank of the matched COL name.</td></tr>
+    <tr><td><code>col:scientificName</code></td><td>Matched COL scientific name (canonical).</td></tr>
+    <tr><td><code>col:authorship</code></td><td>Authorship of the matched COL name.</td></tr>
+    <tr><td><code>col:status</code></td><td>Status of the matched name in COL (e.g. <code>accepted</code>, <code>provisionally accepted</code>, <code>synonym</code>).</td></tr>
+    <tr><td><code>col:acceptedID</code></td><td>If the match is a synonym, the COL ID of the accepted taxon it points to.</td></tr>
+    <tr><td><code>col:acceptedScientificName</code></td><td>Accepted COL name (when <code>col:status</code> is <code>synonym</code>).</td></tr>
+    <tr><td><code>col:acceptedAuthorship</code></td><td>Authorship of the accepted COL name.</td></tr>
+    <tr><td><code>col:kingdom</code> … <code>col:genus</code></td><td>Higher classification of the accepted COL taxon.</td></tr>
+    <tr><td><code>col:classification</code></td><td>Full COL classification as a <code>|</code>-separated list of <code>RANK:name authorship</code> pairs, from genus up to domain.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="notes">Notes on interpretation</h2>
+<p>We primarily used ChecklistBank matching services to generate it. A basic <a href="gbif-col265-analysis.html">analysis of the matching gaps</a> has been done. Notably all UNITE and GTDB molecular TOU names have no match in COL any longer. COL uses a newer version 10 of UNITE.</p>
+<ul>
+  <li>The mapping is <strong>not always 1:1.</strong> It is a name match: a GBIF backbone
+  taxon may match a COL name that is itself a <strong>synonym</strong>, in which case
+  <code>col:status</code> is <code>synonym</code> and <code>col:acceptedID</code> /
+  <code>col:acceptedScientificName</code> give the accepted COL taxon to use. The
+  <code>col:kingdom</code>…<code>col:classification</code> columns describe that accepted taxon.</li>
+  <li>Statuses can differ between the two taxonomies (a name accepted in the GBIF backbone
+  may be a synonym in COL, and vice versa), so always check <code>col:status</code> before
+  treating <code>col:ID</code> as an equivalent.</li>
+  <li><strong>Empty <code>col:</code> columns</strong> mean no COL 26.5 XR match was found
+  for that backbone key.</li>
+</ul>
+
+<h2 id="api">Looking up COL identifiers via the GBIF matching service</h2>
+<p>You don't need this file for one-off lookups. The GBIF species-match API (v2) can
+resolve a GBIF Backbone usage key to its COL XR equivalent on demand. Point the
+match service at the COL Extended Release with <code>checklistKey=xcol</code> and pass the
+backbone key as <code>taxonID=gbif:&lt;usageKey&gt;</code>:</p>
+
+<pre><code>GET https://api.gbif.org/v2/species/match?checklistKey=xcol&amp;taxonID=gbif:797</code></pre>
+
+<p>Here <code>gbif:797</code> is the backbone key for the order <em>Lepidoptera</em> and
+<code>xcol</code> is the alias for the Catalogue of Life Extended Release (equivalently,
+<code>checklistKey=7ddf754f-d193-4cc9-b351-99906754a03b</code>). The response carries the
+matched COL usage; its <code>key</code> is the COL identifier — the same value as the
+<code>col:ID</code> column in this file:</p>
+
+<pre><code>{
+  "usage": {
+    "key": "B6L67",
+    "name": "Lepidoptera",
+    "rank": "ORDER",
+    "status": "ACCEPTED"
+  },
+  "diagnostics": { "matchType": "VARIANT" }
+  // the full response also includes the "classification" array
+}</code></pre>
+
+<p>Notes:</p>
+<ul>
+  <li>Change the number to resolve any backbone key; the <code>gbif:</code> prefix tells the
+  service the identifier is a GBIF Backbone usage key.</li>
+  <li>When the backbone name maps to a COL <strong>synonym</strong>, the response's
+  <code>usage</code> is that synonym and an <code>acceptedUsage</code> block (with
+  <code>status: "SYNONYM"</code>) gives the accepted taxon — mirroring the
+  <code>col:acceptedID</code> / <code>col:acceptedScientificName</code> columns here.</li>
+  <li>If a backbone key has no COL match, the response contains no <code>usage</code> and
+  <code>diagnostics.matchType</code> is <code>NONE</code> — the equivalent of an empty
+  <code>col:</code> row in this file.</li>
+  <li>This is the same service used to generate this file: the TSV is a precomputed bulk
+  dump of every backbone key, while the API is for on-demand, single-key lookups. You can
+  also match by scientific name, or target the GBIF Backbone instead of COL — see the
+  <a href="https://techdocs.gbif.org/en/data-processing/taxonomy-interpretation">GBIF taxonomy interpretation docs</a>.</li>
+</ul>
+
+<h2 id="sources">Sources &amp; downloads</h2>
+<ul class="sources">
+  <li><strong>GBIF Backbone Taxonomy</strong> (legacy, frozen; last version 28 August 2023)
+  — dataset key <code>d7dddbf4-2cf0-4f39-9b2a-bb099caae36c</code>
+    <ul>
+      <li>Dataset page: <a href="https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c">gbif.org/dataset/d7dddbf4-…</a></li>
+      <li>Download (28 August 2023 version): <a href="https://hosted-datasets.gbif.org/datasets/backbone/2023-08-28/">hosted-datasets.gbif.org/datasets/backbone/2023-08-28/</a></li>
+    </ul>
+  </li>
+  <li><strong>Catalogue of Life Extended Release (COL26.5 XR)</strong> version May 2026
+    <ul>
+      <li>ChecklistBank page: <a href="https://www.checklistbank.org/dataset/315192">checklistbank.org/dataset/315192</a></li>
+      <li>Download, ColDP format: <a href="https://download.checklistbank.org/col/monthly/2026-05-15_xr_coldp.zip">2026-05-15_xr_coldp.zip</a></li>
+      <li>Download, Darwin Core Archive: <a href="https://download.checklistbank.org/col/monthly/2026-05-15_xr_dwca.zip">2026-05-15_xr_dwca.zip</a></li>
+    </ul>
+  </li>
+  <li><strong>Catalogue of Life</strong> portal, latest version: <a href="https://www.catalogueoflife.org/">catalogueoflife.org</a></li>
+  <li><strong>ChecklistBank</strong> (infrastructure hosting COL and its sources)
+  — <a href="https://www.checklistbank.org/">checklistbank.org</a></li>
+</ul>
+
+</body>
+</html>
