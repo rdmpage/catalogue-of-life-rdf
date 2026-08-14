@@ -16,12 +16,11 @@ $debug = false;
 // CoL
 $basedir = '2026-05-15_xr_coldp/source';
 $files = scandir($basedir);
-//$files=['1005.yaml'];
 
-/*
-$basedir = '1524b38a-2939-466f-b5df-ba4c22ecc5d9';
-$files = scandir($basedir);
-*/
+if ($debug)
+{
+	$files=['1005.yaml'];
+}
 
 foreach ($files as $filename)
 {
@@ -63,6 +62,7 @@ foreach ($files as $filename)
 					break;					
 				
 				/*
+					// These can be big blobs of text
 				case 'description':
 					$p = 'https://schema.org/description';
 					$o = '"' . nice_literal($value) . '"';
@@ -167,6 +167,5 @@ foreach ($files as $filename)
 		echo $output . "\n";
 	}
 }
-
 
 ?>
