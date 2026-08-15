@@ -1,0 +1,41 @@
+# Access control for this checkout when it is served directly by Apache.
+#
+# The iphylo.org vhost sets `Require all granted` over all of ~/Sites/iphylo and
+# `AllowOverride All`, so without this file everything here is public: .git, the
+# PHP generators, the ColDP dump, and ~13 GB of .nt.
+#
+# DEFAULT DENY, then allow the one public file. An allow-list, because a
+# deny-list leaves anything added later exposed until someone remembers it.
+#
+# This lives in the repo so it deploys with a git pull, and it needs no Apache
+# restart — .htaccess is read per-request.
+#
+# It cannot do the SPARQL proxy: ProxyPass is not valid in .htaccess context.
+# That part lives in deploy/macos/apache-col-sparql.conf and does need an
+# httpd.conf change.
+
+Options -Indexes -ExecCGI
+DirectoryIndex index.html
+
+# Authorisation runs before both mod_rewrite and mod_alias in .htaccess context
+# (they act at fixup), so a bare `Require all denied` here 403s the directory
+# itself and no later rewrite to index.html can rescue it. Matching on the
+# request URI instead lets the directory and its index through while everything
+# else — subdirectories included — stays denied by default.
+#
+# The /col path is hardcoded. If the mount point changes, change it here too.
+<If "%{REQUEST_URI} =~ m#^/col/(index\.html)?$#">
+    Require all granted
+</If>
+<Else>
+    Require all denied
+</Else>
+
+# PHP must never execute here. mod_php7 is loaded on this host and httpd.conf
+# sets a global `SetHandler application/x-httpd-php` for *.php, so without this
+# a request for taxa.php would run it — reading the ColDP dump and emitting
+# millions of triples to whoever asked.
+<FilesMatch "\.php$">
+    SetHandler none
+    Require all denied
+</FilesMatch>
