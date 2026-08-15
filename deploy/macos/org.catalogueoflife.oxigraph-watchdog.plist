@@ -13,9 +13,13 @@
   Check it is alive:
     tail -f /Users/rpage/oxigraph-watchdog.log
 
-  LIMIT_MB is the ceiling in megabytes. 2048 is generous — Oxigraph idles
-  around 45-130 MB and ordinary queries stay well under — while being far below
-  anything that would trouble a 16 GB machine.
+  Fires on sustained CPU rather than memory — see the script header for the
+  measurements that led to that. Reinstall after editing:
+
+    sudo launchctl bootout system/org.catalogueoflife.oxigraph-watchdog
+    sudo cp org.catalogueoflife.oxigraph-watchdog.plist /Library/LaunchDaemons/
+    sudo chown root:wheel /Library/LaunchDaemons/org.catalogueoflife.oxigraph-watchdog.plist
+    sudo launchctl bootstrap system /Library/LaunchDaemons/org.catalogueoflife.oxigraph-watchdog.plist
 -->
 <plist version="1.0">
 <dict>
@@ -30,8 +34,17 @@
 
 	<key>EnvironmentVariables</key>
 	<dict>
-		<key>LIMIT_MB</key>
-		<string>2048</string>
+		<!-- Busy threshold, and how many consecutive 30s checks at that level
+		     before killing. 3 x 30s = ~90s of continuous burn. A legitimate
+		     full scan takes ~23s, so it shows up in one sample at most. -->
+		<key>CPU_PCT</key>
+		<string>50</string>
+		<key>STRIKES</key>
+		<string>3</string>
+		<!-- Backstop only. RSS is a poor primary signal here: it counts mmap'd
+		     RocksDB pages the kernel reclaims on its own. -->
+		<key>RSS_CEILING_MB</key>
+		<string>6144</string>
 	</dict>
 
 	<key>UserName</key>
