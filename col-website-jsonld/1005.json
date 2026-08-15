@@ -1,0 +1,31 @@
+{
+  "@context": "https://schema.org/",
+  "@type": "Dataset",
+  "@id": "1005",
+  "url": "https://www.catalogueoflife.org/data/dataset/1005",
+  "name": "Catalogue of Craneflies of the World",
+  "author": [{
+    "@type": "Person",
+    "familyName": "Oosterbroek",
+    "givenName": "Pjotr",
+    "email": "p.oosterbroek@chello.nl"
+  }],
+  "description": "The Catalogue of the Craneflies of the World (CCW) covers all genera, subgenera, species, subspecies, and synonyms of the World Tipuloidea (Insecta – Diptera – Nematocera – families Pediciidae, Limoniidae, Cylindrotomidae, Tipulidae). It also includes up to date information on the distribution of the species and subspecies, specified by countries and, for the larger countries, states, provinces and islands. The website’s list of references has over 7.400 titles, about 4.300 of which available as easy downloadable pdf.",
+  "license": "http://creativecommons.org/publicdomain/zero/1.0/legalcode",
+  "inLanguage": "eng",
+  "version": "Apr 2025",
+  "datePublished": "2025-04-10",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Catalogue of Life (COL)",
+    "url": "https://www.catalogueoflife.org"
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "Global Biodiversity Information Facility (GBIF)",
+    "url": "https://www.gbif.org",
+    "logo": "https://www.gbif.org/img/logo/GBIF50.png",
+    "email": "info@gbif.org",
+    "telephone": "+45 35 32 14 70"
+  }
+}
