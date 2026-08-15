@@ -19,11 +19,11 @@ RDF for references is generated from the CSL-JSON in the CoL data dump. This is 
 
 ## Taxa and taxonomic names
 
-Taxa and taxonomic names are modelled much as CoL currently does. I treat every name as an instance of `schema:TaxonName`. If a name is accepted then it also has an instance of `schema:Taxon`, and has a `schema:parentTaxon`.
+Taxa and taxonomic names are modelled much as CoL currently does. I treat every record as an instance of `schema:Taxon`, that also has an instance of `schema:TaxonName` that has the same URI as the taxon, but with `#name` appended.
 
-If a taxon has more than one name, the other names are synonyms, and are modelled solely as `schema:TaxonName`. On the CoL website the URL for a synonym returns a HTTP 301 redirect to the web page for the accepted taxon.
+If a name is accepted it has a `schema:parentTaxon` that points to its parent in the classification, if not it has a `dwc:acceptedNameUsageID` that points to the accepted name.
 
-So we have slightly messy case of a URL being the same for both a taxon name and a taxonomic name, and URLs for synonyms not having any content but being redirects. I’ve chosen to treat the  https://www.catalogueoflife.org/data/taxon/xxx URL as the URI of the `schema:Taxon`, and append #xxx to that URI to create the URI for the `schema:TaxonName`. For synonyms there is no taxon URL, but I use the same appproach to generate the URI for the `schema:TaxonName`.
+`schema:TaxonName` may include a link to the external source of the name.
 
 ## GBIF Backbone → Catalogue of Life (COL 26.5 XR) identifier mapping
 
@@ -45,6 +45,10 @@ This starts the oxigraph server (accessible on http://localhost:7878) and its fi
 To load triples (**note make sure you stop oxigraph before trying to load data**!):
 
 ```
-oxigraph load --location oxigraph --file triples.nt
+oxigraph load --location oxigraph --file sources.nt
+oxigraph load --location oxigraph --file gbif-col.nt
+oxigraph load --location oxigraph --file references.nt
+oxigraph load --location oxigraph --file taxa.nt
+
 ```
 

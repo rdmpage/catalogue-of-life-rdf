@@ -74,82 +74,67 @@ while (!feof($file_handle))
 			
 			$taxon_name_uri = '';
 			
-			// a taxon (node in the tree)
+			// taxon
+			$s = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:ID'};
+			$p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+			$o = 'https://schema.org/Taxon';
+			$triples[] = [$s, $p, $o];	
+			
+			// status
+			$p = 'http://rs.tdwg.org/dwc/terms/taxonomicStatus';
+			$o = '"' . nice_literal($data->{'col:status'}) . '"';			
+			$triples[] = [$s, $p, $o];	
+			
+			// dataset source
+			if (isset($data->{'col:sourceID'}))
+			{		
+				$p = 'https://schema.org/isPartOf';
+				$o = 'https://www.catalogueoflife.org/data/dataset/' . $data->{'col:sourceID'};				
+				$triples[] = [$s, $p, $o];	
+			}
+			
+			// taxon name string
+			$p = 'https://schema.org/name';
+			$o = '"' . nice_literal($data->{'col:scientificName'}) . '"';			
+			$triples[] = [$s, $p, $o];
+		
+			// rank
+			if (isset($data->{'col:rank'}))
+			{
+				$rank = mb_convert_case($data->{'col:rank'}, MB_CASE_TITLE);
+				
+				$p = 'https://schema.org/taxonRank';
+				$o = '"' . nice_literal($rank) . '"';					
+				$triples[] = [$s, $p, $o];					
+			}				
+										
+			// taxon name URI
+			$taxon_name_uri = $s . '#name';	
+			$p = 'https://schema.org/scientificName';								
+			$triples[] = [$s, $p, $taxon_name_uri];
+												
+			// accepted taxon (= a node in the tree)
 			if (in_array($data->{'col:status'}, array('accepted', 'provisionally accepted')))
 			{
-				// this is a taxon
-				$s = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:ID'};
-				$p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-				$o = 'https://schema.org/Taxon';
-		
-				$triples[] = [$s, $p, $o];	
-				
-				// source
-				// note there are a bunch of potential issues here
-				// putting source on the taxonb means taxa that are synonyms have no source,
-				// also ChatGPT suggests that schema:isPartOf only applies to CreativeWork,
-				// which a Taxon isn't but a TaxonName is(?)
-				if (isset($data->{'col:sourceID'}))
-				{
-		
-					$p = 'https://schema.org/isPartOf';
-					$o = 'https://www.catalogueoflife.org/data/dataset/' . $data->{'col:sourceID'};
-					
-					$triples[] = [$s, $p, $o];	
-				}				
-				
-				// taxon name URI
-				$taxon_name_uri = $s . '#' . $data->{'col:ID'};	
-				// link taxon name to taxon
-				$p = 'https://schema.org/scientificName';	
-							
-				$triples[] = [$s, $p, $taxon_name_uri];
-							
-				// name 
-				$p = 'https://schema.org/name';
-				$o = '"' . nice_literal($data->{'col:scientificName'}) . '"';
-				
-				$triples[] = [$s, $p, $o];
-				
-				// rank
-				if (isset($data->{'col:rank'}))
-				{
-					$rank = mb_convert_case($data->{'col:rank'}, MB_CASE_TITLE);
-					
-					$p = 'https://schema.org/taxonRank';
-					$o = '"' . nice_literal($rank) . '"';
-					
-					$triples[] = [$s, $p, $o];					
-				}				
-								
 				// parent
 				if (isset($data->{'col:parentID'}))
 				{
 					$p = 'https://schema.org/parentTaxon';
-					$o = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:parentID'};
-					
+					$o = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:parentID'};					
 					$triples[] = [$s, $p, $o];
 				}
 								
 			}
 			elseif (in_array($data->{'col:status'}, array('synonym', 'ambiguous synonym', 'misapplied')))
 			{
-				// scientific name
-				$taxon_name_uri = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:ID'} . '#' . $data->{'col:ID'};
-
-				// this is a synonym, statements are made w.r.t. to accepted taxon (AKA "parent")		
-				$s = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:parentID'}; // note use of parentID
-
-				// link name to taxon
-				$p = 'https://schema.org/alternateScientificName';				
-				$triples[] = [$s, $p, $taxon_name_uri];
-				
-				// name as alternate name
-				$p = 'https://schema.org/alternateName';
-				$o = '"' . nice_literal($data->{'col:scientificName'}) . '"';
-				$triples[] = [$s, $p, $o];
-				
-			}
+				if (isset($data->{'col:parentID'}))
+				{
+					$accepted = 'https://www.catalogueoflife.org/data/taxon/' . $data->{'col:parentID'}; // note use of parentID
+					
+					$p = 'http://rs.tdwg.org/dwc/terms/acceptedNameUsageID';						
+					$triples[] = [$s, $p, $accepted];
+				}
+			}		
 			else
 			{
 				// dont know what this is :O
@@ -158,53 +143,44 @@ while (!feof($file_handle))
 			}
 			
 			// scientific name
-			if ($taxon_name_uri != "")
+			$p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+			$o = 'https://schema.org/TaxonName';				
+			$triples[] = [$taxon_name_uri, $p, $o];
+			
+			// name string
+			$p = 'https://schema.org/name';
+			$o = '"' . nice_literal($data->{'col:scientificName'}) . '"';				
+			$triples[] = [$taxon_name_uri, $p, $o];
+			
+			// rank
+			if (isset($data->{'col:rank'}))
 			{
-				// this is a TaxonName
-				$p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-				$o = 'https://schema.org/TaxonName';
+				$rank = mb_convert_case($data->{'col:rank'}, MB_CASE_TITLE);
 				
+				$p = 'https://schema.org/taxonRank';
+				$o = '"' . nice_literal($rank) . '"';					
+				$triples[] = [$taxon_name_uri, $p, $o];					
+			}								
+			
+			// reference for name
+			if (isset($data->{'col:nameReferenceID'}))
+			{
+				$p = 'https://schema.org/isBasedOn';
+				$o = 'https://www.checklistbank.org/dataset/' . $datsetkey  . '/reference/' . $data->{'col:nameReferenceID'};					
 				$triples[] = [$taxon_name_uri, $p, $o];
-				
-				// name
-				$p = 'https://schema.org/name';
-				$o = '"' . nice_literal($data->{'col:scientificName'}) . '"';
-				
+			}
+			
+			// link
+			// this is a link to external source data, but may be a taxon or a name, depending
+			// on the kind of database. Hence "sameAs" might be a bad choice, plus
+			// a difficult one to make because we'd need to chose between sameAs for
+			// the Taxon or the TaxonName. We play safe and liunk to the TaxonName.
+			if (isset($data->{'col:link'}))
+			{
+				$p = 'https://schema.org/seeAlso';
+				$o = nice_uri($data->{'col:link'});					
 				$triples[] = [$taxon_name_uri, $p, $o];
-				
-				// rank
-				if (isset($data->{'col:rank'}))
-				{
-					$rank = mb_convert_case($data->{'col:rank'}, MB_CASE_TITLE);
-					
-					$p = 'https://schema.org/taxonRank';
-					$o = '"' . nice_literal($rank) . '"';
-					
-					$triples[] = [$taxon_name_uri, $p, $o];					
-				}								
-				
-				// reference for name
-				if (isset($data->{'col:nameReferenceID'}))
-				{
-					$p = 'https://schema.org/isBasedOn';
-					$o = 'https://www.checklistbank.org/dataset/' . $datsetkey  . '/reference/' . $data->{'col:nameReferenceID'};
-					
-					$triples[] = [$taxon_name_uri, $p, $o];
-				}
-				
-				// link
-				// this is a link to source data, but may be a taxon or a name, depending
-				// on the kind of database. Hence "sameAs" might be a bad choice, plus
-				// a difficult one to make because we'd need to chose between sameAs for
-				// the Taxon or the TaxonName. We play safe and liunk to the TaxonName.
-				if (isset($data->{'col:link'}))
-				{
-					$p = 'https://schema.org/seeAlso';
-					$o = nice_uri($data->{'col:link'});
-					
-					$triples[] = [$taxon_name_uri, $p, $o];
-				}
-			}			
+			}
 			
 			$output = dump_triples($triples);			
 			echo $output . "\n";			
