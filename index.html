@@ -291,7 +291,7 @@ footer code { font-size: 12px; }
     </div>
 
     <div class="stats">
-      <div><span class="stat__n" data-stat="taxa"     data-pending="1">&mdash;</span><span class="stat__k">Taxa</span></div>
+      <div><span class="stat__n" data-stat="taxa"     data-pending="1">&mdash;</span><span class="stat__k">Name usages</span></div>
       <div><span class="stat__n" data-stat="names"    data-pending="1">&mdash;</span><span class="stat__k">Names</span></div>
       <div><span class="stat__n" data-stat="refs"     data-pending="1">&mdash;</span><span class="stat__k">References</span></div>
       <div><span class="stat__n" data-stat="people"   data-pending="1">&mdash;</span><span class="stat__k">People</span></div>
@@ -351,8 +351,8 @@ footer code { font-size: 12px; }
         </g>
 
         <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#9ca3af">
-          <text x="22"  y="72">3.2M resolve</text>
-          <text x="252" y="72">4.6M</text>
+          <text x="22"  y="72">5.8M, all resolve</text>
+          <text x="252" y="72">7.9M usages</text>
           <text x="472" y="72">7.9M</text>
           <text x="702" y="72">2.0M</text>
           <text x="252" y="188">21K sources</text>
@@ -365,7 +365,7 @@ footer code { font-size: 12px; }
           <text x="312" y="117">isPartOf</text>
           <text x="537" y="117">seeAlso</text>
           <text x="767" y="117">creator / sameAs</text>
-          <text x="272" y="11">parentTaxon</text>
+          <text x="272" y="11">parentTaxon / acceptedNameUsageID</text>
         </g>
       </svg>
     </div>
@@ -397,8 +397,12 @@ footer code { font-size: 12px; }
     <div>
       <h3>Conventions</h3>
       <p>
-        Ranks are capitalised strings (<code>"Species"</code>). Dates use mixed
-        datatypes &mdash; <code>xsd:gYear</code>, <code>xsd:date</code>,
+        <code>schema:Taxon</code> covers <b>every name usage</b>, not just
+        accepted ones &mdash; filter on <code>dwc:taxonomicStatus</code>, and note
+        <code>"provisionally accepted"</code> is distinct from
+        <code>"accepted"</code>. Ranks are capitalised strings
+        (<code>"Species"</code>). Dates use mixed datatypes &mdash;
+        <code>xsd:gYear</code>, <code>xsd:date</code>,
         <code>xsd:gYearMonth</code> &mdash; so compare with
         <code>SUBSTR(STR(?y),1,4)</code>, not <code>?y &gt; 2015</code>.
       </p>
@@ -419,14 +423,17 @@ footer code { font-size: 12px; }
   "use strict";
 
   var PREFIX = 'PREFIX s: <https://schema.org/>\n' +
+               'PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>\n' +
                'PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\n';
 
   /* Every query below was run against the store before shipping.
      cost:"scan" marks the ones that touch the whole graph. */
+  /* Every query here was run against the live endpoint before shipping.
+     cost:"scan" marks the ones that touch the whole graph. */
   var QUERIES = [
     {
       title: 'Everything about <i>Homo sapiens</i>',
-      desc: 'One taxon, all its properties. The simplest possible starting point.',
+      desc: 'One taxon, all its properties. The simplest starting point.',
       cost: 'fast',
       q: 'SELECT ?p ?o WHERE {\n' +
          '  <https://www.catalogueoflife.org/data/taxon/6MB3T> ?p ?o .\n' +
@@ -443,25 +450,38 @@ footer code { font-size: 12px; }
     },
     {
       title: 'Every species of <i>Homo</i>',
-      desc: 'Children of a genus, including the fossil species.',
+      desc: 'Children of a genus, including the fossil species. Synonyms have no parentTaxon, so they do not appear here.',
       cost: 'fast',
-      q: 'SELECT ?taxon ?name WHERE {\n' +
-         '  ?g s:name "Homo" ; a s:Taxon .\n' +
-         '  ?taxon s:parentTaxon ?g ; s:name ?name .\n' +
+      q: 'SELECT ?taxon ?name ?status WHERE {\n' +
+         '  ?g s:name "Homo" ; s:taxonRank "Genus" .\n' +
+         '  ?taxon s:parentTaxon ?g ;\n' +
+         '         s:name ?name ;\n' +
+         '         dwc:taxonomicStatus ?status .\n' +
          '}'
     },
     {
       title: 'Synonyms of a species',
-      desc: 'Homo sapiens carries an extraordinary pile of historical synonyms.',
+      desc: 'Synonyms are Taxon records in their own right, pointing back with dwc:acceptedNameUsageID. Homo sapiens has an extraordinary pile of them.',
       cost: 'fast',
-      q: 'SELECT ?synonym WHERE {\n' +
-         '  ?t s:name "Homo sapiens" ; a s:Taxon ;\n' +
-         '     s:alternateName ?synonym .\n' +
+      q: 'SELECT ?synonym ?status WHERE {\n' +
+         '  ?syn dwc:acceptedNameUsageID\n' +
+         '         <https://www.catalogueoflife.org/data/taxon/6MB3T> ;\n' +
+         '       s:name ?synonym ;\n' +
+         '       dwc:taxonomicStatus ?status .\n' +
          '}'
     },
     {
+      title: 'GBIF backbone &rarr; Catalogue of Life',
+      desc: 'The identifier mapping, 5.8M links. Every one resolves to a taxon here, synonyms included.',
+      cost: 'fast',
+      q: 'SELECT ?gbif ?name ?status WHERE {\n' +
+         '  ?gbif s:sameAs ?col .\n' +
+         '  ?col s:name ?name ; dwc:taxonomicStatus ?status .\n' +
+         '} LIMIT 50'
+    },
+    {
       title: 'Cross-links to other databases',
-      desc: 'Follow scientificName out to ITIS, BOLD, MolluscaBase and Index Fungorum.',
+      desc: 'Names carry the links out to ITIS, BOLD, MolluscaBase and Index Fungorum.',
       cost: 'fast',
       q: 'SELECT ?name ?link WHERE {\n' +
          '  ?t a s:Taxon ; s:name ?name ; s:scientificName ?n .\n' +
@@ -482,8 +502,16 @@ footer code { font-size: 12px; }
          '} LIMIT 50'
     },
     {
+      title: 'How many records at each status?',
+      desc: 'Accepted, synonym, ambiguous, misapplied. A full aggregate — expect it to take a while.',
+      cost: 'scan',
+      q: 'SELECT ?status (COUNT(*) AS ?n) WHERE {\n' +
+         '  ?t dwc:taxonomicStatus ?status .\n' +
+         '} GROUP BY ?status ORDER BY DESC(?n)'
+    },
+    {
       title: 'Who describes the most species?',
-      desc: 'Authors ranked by number of works cited as original descriptions.',
+      desc: 'Authors ranked by works cited as original descriptions. Full scan.',
       cost: 'scan',
       q: 'SELECT ?family ?given (COUNT(DISTINCT ?n) AS ?names) WHERE {\n' +
          '  ?n s:isBasedOn ?ref .\n' +
@@ -492,14 +520,6 @@ footer code { font-size: 12px; }
          '  OPTIONAL { ?p s:givenName ?given }\n' +
          '} GROUP BY ?family ?given\n' +
          'ORDER BY DESC(?names) LIMIT 25'
-    },
-    {
-      title: 'How many taxa at each rank?',
-      desc: 'A full aggregate over the graph. Expect it to take a while.',
-      cost: 'scan',
-      q: 'SELECT ?rank (COUNT(*) AS ?n) WHERE {\n' +
-         '  ?t a s:Taxon ; s:taxonRank ?rank .\n' +
-         '} GROUP BY ?rank ORDER BY DESC(?n)'
     }
   ];
 
