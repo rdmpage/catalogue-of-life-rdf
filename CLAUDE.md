@@ -83,6 +83,7 @@ triples that RDF dedupes. The store is **18 GB** on disk. Load took 2m57s,
 | `oxigraph/` | RocksDB store (dev only). Gitignored. On the Mini it lives at `~/oxigraph-col`, outside the web root. Rebuild, never copy between machines. |
 | `index.html` | The SPARQL web interface. At the repo root because the checkout is served directly on the Mini. |
 | `deploy/` | Hosting configs. Linux (systemd + Caddy) at the top; macOS (launchd + **Apache**) in `deploy/macos/`. |
+| `QUERIES.md` | Worked example queries, local and federated, all timed against the live endpoints. |
 | `deploy/FEDERATION.md` | Everything learned about Oxigraph↔QLever federation. |
 | `col-website-jsonld/` | Examples of JSON-LD scraped from the CoL website. |
 
@@ -113,6 +114,11 @@ per the changelog: "do not attempt to optimize SERVICE (keep them, do not push
 filter in them...)". So a variable shared between the local query and a `SERVICE`
 block arrives *unbound* remotely. Consequences and the workaround are in
 `deploy/FEDERATION.md`.
+
+Note this applies to CoL → QLever only. **QLever → CoL works with nothing
+configured on our side** — verified 2026-08-15, 0.36s for a five-id match. It
+permits `SERVICE` to arbitrary hosts and does proper bound joins. That is the
+direction to demonstrate; see `QUERIES.md`.
 
 ## Data gotchas
 
