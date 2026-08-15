@@ -27,6 +27,13 @@ function nice_uri($uri)
 	$uri = str_replace(']', urlencode(']'), $uri);
 	$uri = str_replace('<', urlencode('<'), $uri);
 	$uri = str_replace('>', urlencode('>'), $uri);
+	
+	$uri = str_replace('|', urlencode('|'), $uri);
+	
+	// cray cray
+	// 3234R
+	// http://https://www.indexfungorum.org/Names/NamesRecord.asp?RecordID=560001
+	$uri = str_replace('http://https://', 'http://', $uri);
 
 	return $uri;
 }
@@ -35,8 +42,8 @@ function nice_uri($uri)
 // Clean up text to play nice with triple stire
 function nice_literal($text)
 {
-	// known errors
-	$text = str_replace('\\N', '\\\\N', $text);
+	// escape backslashes 
+	$text = str_replace('\\', '\\\\', $text);
 	
 	// remove HTML/XML tags
 	$text = strip_tags($text);
@@ -46,6 +53,7 @@ function nice_literal($text)
 	
 	// clean up spaces
 	$text = preg_replace('/\s\s+/', ' ', $text);	
+	
 	
 	// escape double quotes
 	$text = str_replace('"', '\"', $text);
