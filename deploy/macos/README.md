@@ -88,11 +88,14 @@ The Mini has **~500 GB free**, so disk is no longer a constraint. For reference:
 
 | | |
 |---|---|
-| Bytes per triple (measured, 16 GiB / 75.68M) | 227 |
-| Triples when all four files are loaded | 112,290,863 |
-| Projected final store | **~24 GiB** |
-| Two A/B slots plus the `.nt` files | ~62 GiB |
-| All four `.nt` compressed with zstd (16.8x, measured) | ~0.8 GiB |
+| Real triples across all four files | 102,328,986 |
+| Actually loaded (0.02% dedup) | **102,308,859** |
+| Store on disk, after `optimize` | **18 GB** |
+| Load time / optimize time | 2m57s / 1m32s |
+| Two A/B slots plus the `.nt` files | ~49 GB |
+
+Note the four files total 112,290,863 *lines* but only 102,328,986 triples —
+every record block ends with a blank line. Do not size from `wc -l`.
 
 With room for two stores, the Mini uses the same A/B swap as the Linux box:
 `load-mini.sh` builds into whichever of `oxigraph/store-a` and `oxigraph/store-b`

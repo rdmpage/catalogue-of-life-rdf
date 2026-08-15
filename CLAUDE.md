@@ -57,16 +57,21 @@ is no IRI-valued Darwin Core term for "accepted name usage"**. Both
 
 ### Current file sizes
 
-| File | Lines |
-|---|---|
-| `taxa.nt` | 96,326,172 |
-| `references.nt` | 9,713,301 |
-| `gbif-col.nt` | 5,867,639 (incl. 57,526 blank) |
-| `sources.nt` | 383,751 |
-| **total** | **~112.3M** |
+**Every record block ends with a blank line**, so line counts overstate triples
+by ~10M. N-Triples permits this and Oxigraph skips them, but do not use `wc -l`
+as a triple count.
 
-At the 227 bytes/triple measured previously that projects to a **~24 GiB** store,
-up from 19.4 GiB. Re-measure rather than trusting it.
+| File | Lines | Blank | Real triples |
+|---|---|---|---|
+| `taxa.nt` | 96,326,172 | 7,851,869 | 88,474,303 |
+| `references.nt` | 9,713,301 | 2,031,506 | 7,681,795 |
+| `gbif-col.nt` | 5,867,639 | 57,526 | 5,810,113 |
+| `sources.nt` | 383,751 | 20,976 | 362,775 |
+| **total** | 112,290,863 | 9,961,877 | **102,328,986** |
+
+Loaded on the Mini: **102,308,859** — 20,127 fewer, i.e. 0.02% genuine duplicate
+triples that RDF dedupes. The store is **18 GB** on disk. Load took 2m57s,
+`optimize` a further 1m32s.
 
 ## Layout
 
@@ -134,7 +139,7 @@ rebuild; treat these as orders of magnitude.
 - Bound-subject lookups, property paths (`parentTaxon*`), genus children: **10–20 ms**
 - `SELECT (COUNT(*)) WHERE { ?s ?p ?o }` (full index scan): **18 s**
 - Single `?s a schema:Taxon` count: **~1 s**
-- Storage: **227 bytes/triple**
+- Storage: **~189 bytes/triple** (18 GB / 102.3M, measured on the Mini)
 - zstd on N-Triples: **16.8x** (10.9 GB → 0.65 GB), so ship compressed and
   decompress at the far end
 
