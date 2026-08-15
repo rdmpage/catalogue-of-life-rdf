@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catalogue of Life · SPARQL</title>
+<meta name="description" content="The Catalogue of Life in RDF, using schema.org and Bioschemas, queryable over SPARQL.">
+<meta name="robots" content="noindex">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@triply/yasgui/build/yasgui.min.css" rel="stylesheet">
+
+<style>
+:root {
+  --bg:      #ffffff;
+  --surface: #f9fafb;
+  --fg:      #111827;
+  --muted:   #6b7280;
+  --faint:   #9ca3af;
+  --border:  #e5e7eb;
+  --accent:  #1f6feb;
+  --amber:   #92620a;
+  --radius:  6px;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:      #0d1117;
+    --surface: #161b22;
+    --fg:      #e6edf3;
+    --muted:   #8b949e;
+    --faint:   #6e7681;
+    --border:  #30363d;
+    --accent:  #58a6ff;
+    --amber:   #d29922;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, pre { font-family: var(--mono); }
+
+/* ── Header ─────────────────────────────────────────────── */
+
+header {
+  padding: 48px 0 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+
+.tagline {
+  color: var(--muted);
+  margin: 0;
+  max-width: 62ch;
+}
+
+.tagline code {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ── Endpoint ───────────────────────────────────────────── */
+
+.endpoint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.endpoint code {
+  flex: 1;
+  min-width: 260px;
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  word-break: break-all;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--faint); }
+.btn[data-done="1"] { color: var(--accent); border-color: var(--accent); }
+
+/* ── Stats ──────────────────────────────────────────────── */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin-top: 28px;
+}
+
+.stat__n {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+.stat__n[data-pending="1"] { color: var(--faint); font-weight: 400; }
+
+.stat__k {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Sections ───────────────────────────────────────────── */
+
+section { padding: 40px 0 0; }
+
+h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+/* ── Model diagram ──────────────────────────────────────── */
+
+.model {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 20px;
+  overflow-x: auto;
+}
+.model svg { display: block; min-width: 760px; width: 100%; height: auto; }
+
+/* ── Cards ──────────────────────────────────────────────── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.card:hover, .card:focus-visible {
+  border-color: var(--faint);
+  background: var(--surface);
+  outline: none;
+}
+
+.card__t {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.card__t i { font-style: italic; font-weight: 600; }
+
+.card__d {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.card__cost {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.card__cost[data-cost="scan"] { color: var(--amber); }
+
+/* ── YASGUI ─────────────────────────────────────────────── */
+
+.console__frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+#yasgui .yasgui .autocompleteWrapper { display: none; }  /* endpoint is fixed */
+#yasgui .CodeMirror {
+  font-family: var(--mono);
+  font-size: 13px;
+  height: auto;
+  min-height: 200px;
+}
+#yasgui .yasr table.dataTable { font-family: var(--mono); font-size: 12px; }
+
+/* ── Footer ─────────────────────────────────────────────── */
+
+footer {
+  margin-top: 48px;
+  border-top: 1px solid var(--border);
+  padding: 24px 0 56px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  font-size: 13px;
+  color: var(--muted);
+}
+footer h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0 0 6px;
+}
+footer p { margin: 0; max-width: 44ch; }
+footer code { font-size: 12px; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  header { padding: 32px 0 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <h1>Catalogue of Life &middot; SPARQL</h1>
+    <p class="tagline">
+      Catalogue of Life XR (2026-05-15) expressed as RDF with
+      <a href="https://schema.org">schema.org</a> and
+      <a href="https://bioschemas.org">Bioschemas</a>, served over a public
+      SPARQL endpoint. Read-only. A proof of concept.
+    </p>
+
+    <div class="endpoint">
+      <code id="endpoint">&nbsp;</code>
+      <button class="btn" id="copy" type="button">Copy</button>
+    </div>
+
+    <div class="stats">
+      <div><span class="stat__n" data-stat="taxa"     data-pending="1">&mdash;</span><span class="stat__k">Taxa</span></div>
+      <div><span class="stat__n" data-stat="names"    data-pending="1">&mdash;</span><span class="stat__k">Names</span></div>
+      <div><span class="stat__n" data-stat="refs"     data-pending="1">&mdash;</span><span class="stat__k">References</span></div>
+      <div><span class="stat__n" data-stat="people"   data-pending="1">&mdash;</span><span class="stat__k">People</span></div>
+      <div><span class="stat__n" data-stat="datasets" data-pending="1">&mdash;</span><span class="stat__k">Sources</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Data model</h2>
+    <p class="sub">
+      Solid boxes are Catalogue of Life types; dashed are external. Taxa carry the
+      classification through <code>schema:parentTaxon</code> and cite their source
+      dataset with <code>schema:isPartOf</code>. Names hold the cross-links out to
+      ITIS, BOLD, MolluscaBase and Index Fungorum. GBIF backbone identifiers point
+      <em>in</em> to taxa via <code>schema:sameAs</code>.
+    </p>
+
+    <div class="model">
+      <svg viewBox="0 0 900 210" role="img" aria-label="GBIF species link in to Taxon via sameAs. Taxon links to TaxonName via scientificName, to a source Dataset via isPartOf, and to itself via parentTaxon. TaxonName links to CreativeWork via isBasedOn and to external databases via seeAlso. CreativeWork links to Person and DOI via creator and sameAs.">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <g fill="none" stroke="currentColor" stroke-width="1" opacity=".85" color="#9ca3af">
+          <!-- CoL-native types -->
+          <rect x="236" y="34"  width="140" height="46" rx="5"/>
+          <rect x="456" y="34"  width="150" height="46" rx="5"/>
+          <rect x="686" y="34"  width="150" height="46" rx="5"/>
+          <rect x="236" y="150" width="140" height="44" rx="5"/>
+          <!-- external -->
+          <rect x="6"   y="34"  width="150" height="46" rx="5" stroke-dasharray="3 3"/>
+          <rect x="456" y="150" width="150" height="44" rx="5" stroke-dasharray="3 3"/>
+          <rect x="686" y="150" width="150" height="44" rx="5" stroke-dasharray="3 3"/>
+
+          <!-- incoming from GBIF, then the spine -->
+          <path d="M156 57 H232" marker-end="url(#a)"/>
+          <path d="M376 57 H452" marker-end="url(#a)"/>
+          <path d="M606 57 H682" marker-end="url(#a)"/>
+          <!-- downward edges -->
+          <path d="M306 80 V146" marker-end="url(#a)"/>
+          <path d="M531 80 V146" marker-end="url(#a)"/>
+          <path d="M761 80 V146" marker-end="url(#a)"/>
+          <!-- parentTaxon self-loop, above Taxon -->
+          <path d="M266 34 V16 H356 V30" marker-end="url(#a)"/>
+        </g>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="12" fill="currentColor">
+          <text x="22"  y="56">GBIF species</text>
+          <text x="252" y="56">Taxon</text>
+          <text x="472" y="56">TaxonName</text>
+          <text x="702" y="56">CreativeWork</text>
+          <text x="252" y="172">Dataset</text>
+          <text x="472" y="172">external DBs</text>
+          <text x="702" y="172">Person / DOI</text>
+        </g>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="#9ca3af">
+          <text x="22"  y="72">3.2M resolve</text>
+          <text x="252" y="72">4.6M</text>
+          <text x="472" y="72">7.9M</text>
+          <text x="702" y="72">2.0M</text>
+          <text x="252" y="188">21K sources</text>
+          <text x="472" y="188">ITIS, BOLD, IF&#8230;</text>
+          <text x="702" y="188">authors, doi.org</text>
+
+          <text x="194" y="50" text-anchor="middle">sameAs</text>
+          <text x="414" y="50" text-anchor="middle">scientificName</text>
+          <text x="644" y="50" text-anchor="middle">isBasedOn</text>
+          <text x="312" y="117">isPartOf</text>
+          <text x="537" y="117">seeAlso</text>
+          <text x="767" y="117">creator / sameAs</text>
+          <text x="272" y="11">parentTaxon</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>Example queries</h2>
+    <p class="sub">Click to load into the console below.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="console">
+    <h2>Console</h2>
+    <p class="sub">&nbsp;</p>
+    <div class="console__frame">
+      <div id="yasgui"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      <h3>Built with</h3>
+      <p>
+        <a href="https://github.com/oxigraph/oxigraph">Oxigraph</a>, from
+        Catalogue of Life ColDP. Federated queries reach GBIF through
+        <a href="https://qlever.dev/api/gbif">QLever</a>.
+      </p>
+    </div>
+    <div>
+      <h3>Conventions</h3>
+      <p>
+        Ranks are capitalised strings (<code>"Species"</code>). Dates use mixed
+        datatypes &mdash; <code>xsd:gYear</code>, <code>xsd:date</code>,
+        <code>xsd:gYearMonth</code> &mdash; so compare with
+        <code>SUBSTR(STR(?y),1,4)</code>, not <code>?y &gt; 2015</code>.
+      </p>
+    </div>
+    <div>
+      <h3>Status</h3>
+      <p>
+        Read-only, unauthenticated, best effort, running on a small machine.
+        Please keep queries bounded.
+      </p>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@triply/yasgui/build/yasgui.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var PREFIX = 'PREFIX s: <https://schema.org/>\n' +
+               'PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\n';
+
+  /* Every query below was run against the store before shipping.
+     cost:"scan" marks the ones that touch the whole graph. */
+  var QUERIES = [
+    {
+      title: 'Everything about <i>Homo sapiens</i>',
+      desc: 'One taxon, all its properties. The simplest possible starting point.',
+      cost: 'fast',
+      q: 'SELECT ?p ?o WHERE {\n' +
+         '  <https://www.catalogueoflife.org/data/taxon/6MB3T> ?p ?o .\n' +
+         '}'
+    },
+    {
+      title: 'The full classification',
+      desc: 'Walks parentTaxon upwards from Homo sapiens to Eukaryota in one property path.',
+      cost: 'fast',
+      q: 'SELECT ?rank ?name WHERE {\n' +
+         '  <https://www.catalogueoflife.org/data/taxon/6MB3T> s:parentTaxon* ?a .\n' +
+         '  ?a s:name ?name ; s:taxonRank ?rank .\n' +
+         '}'
+    },
+    {
+      title: 'Every species of <i>Homo</i>',
+      desc: 'Children of a genus, including the fossil species.',
+      cost: 'fast',
+      q: 'SELECT ?taxon ?name WHERE {\n' +
+         '  ?g s:name "Homo" ; a s:Taxon .\n' +
+         '  ?taxon s:parentTaxon ?g ; s:name ?name .\n' +
+         '}'
+    },
+    {
+      title: 'Synonyms of a species',
+      desc: 'Homo sapiens carries an extraordinary pile of historical synonyms.',
+      cost: 'fast',
+      q: 'SELECT ?synonym WHERE {\n' +
+         '  ?t s:name "Homo sapiens" ; a s:Taxon ;\n' +
+         '     s:alternateName ?synonym .\n' +
+         '}'
+    },
+    {
+      title: 'Cross-links to other databases',
+      desc: 'Follow scientificName out to ITIS, BOLD, MolluscaBase and Index Fungorum.',
+      cost: 'fast',
+      q: 'SELECT ?name ?link WHERE {\n' +
+         '  ?t a s:Taxon ; s:name ?name ; s:scientificName ?n .\n' +
+         '  ?n s:seeAlso ?link .\n' +
+         '  FILTER(CONTAINS(STR(?link), "boldsystems"))\n' +
+         '} LIMIT 50'
+    },
+    {
+      title: 'Species described since 2015, with DOIs',
+      desc: 'Name to original description to DOI. Note the SUBSTR idiom — datePublished has mixed datatypes.',
+      cost: 'fast',
+      q: 'SELECT ?species ?year ?doi WHERE {\n' +
+         '  ?t a s:Taxon ; s:taxonRank "Species" ;\n' +
+         '     s:name ?species ; s:scientificName ?n .\n' +
+         '  ?n s:isBasedOn ?ref .\n' +
+         '  ?ref s:sameAs ?doi ; s:datePublished ?year .\n' +
+         '  FILTER(xsd:integer(SUBSTR(STR(?year), 1, 4)) > 2015)\n' +
+         '} LIMIT 50'
+    },
+    {
+      title: 'Who describes the most species?',
+      desc: 'Authors ranked by number of works cited as original descriptions.',
+      cost: 'scan',
+      q: 'SELECT ?family ?given (COUNT(DISTINCT ?n) AS ?names) WHERE {\n' +
+         '  ?n s:isBasedOn ?ref .\n' +
+         '  ?ref s:creator ?p .\n' +
+         '  ?p s:familyName ?family .\n' +
+         '  OPTIONAL { ?p s:givenName ?given }\n' +
+         '} GROUP BY ?family ?given\n' +
+         'ORDER BY DESC(?names) LIMIT 25'
+    },
+    {
+      title: 'How many taxa at each rank?',
+      desc: 'A full aggregate over the graph. Expect it to take a while.',
+      cost: 'scan',
+      q: 'SELECT ?rank (COUNT(*) AS ?n) WHERE {\n' +
+         '  ?t a s:Taxon ; s:taxonRank ?rank .\n' +
+         '} GROUP BY ?rank ORDER BY DESC(?n)'
+    }
+  ];
+
+  /* ── Endpoint ─────────────────────────────────────────── */
+  var ENDPOINT = window.location.origin + '/query';
+  document.getElementById('endpoint').textContent = ENDPOINT;
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText(ENDPOINT).then(function () {
+      b.textContent = 'Copied';
+      b.dataset.done = '1';
+      setTimeout(function () { b.textContent = 'Copy endpoint'; b.dataset.done = ''; }, 1800);
+    });
+  });
+
+  /* ── Live counts ──────────────────────────────────────── */
+  var STATS = {
+    taxa:     'SELECT (COUNT(*) AS ?n) WHERE { ?s a <https://schema.org/Taxon> }',
+    names:    'SELECT (COUNT(*) AS ?n) WHERE { ?s a <https://schema.org/TaxonName> }',
+    refs:     'SELECT (COUNT(*) AS ?n) WHERE { ?s a <https://schema.org/CreativeWork> }',
+    people:   'SELECT (COUNT(*) AS ?n) WHERE { ?s a <https://schema.org/Person> }',
+    datasets: 'SELECT (COUNT(*) AS ?n) WHERE { ?s a <https://schema.org/Dataset> }'
+  };
+
+  function compact(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.0+$/, '') + 'M';
+    if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+    return String(n);
+  }
+
+  Object.keys(STATS).forEach(function (k) {
+    var cell = document.querySelector('[data-stat="' + k + '"]');
+    fetch(ENDPOINT + '?query=' + encodeURIComponent(STATS[k]), {
+      headers: { Accept: 'application/sparql-results+json' }
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (j) {
+        var v = j.results.bindings[0].n.value;
+        cell.textContent = compact(parseInt(v, 10));
+        cell.dataset.pending = '';
+        cell.title = parseInt(v, 10).toLocaleString('en');
+      })
+      .catch(function () { cell.textContent = '—'; });
+  });
+
+  /* ── YASGUI ───────────────────────────────────────────── */
+  var yasgui = new Yasgui(document.getElementById('yasgui'), {
+    requestConfig: { endpoint: ENDPOINT, method: 'GET' },
+    copyEndpointOnNewTab: true,
+    corsProxy: null
+  });
+
+  /* Clearing results has three parts: the in-memory result set, the rendered
+     DOM, and the copy YASGUI persists to localStorage (which it would restore
+     on the next page load). Missing any one leaves stale output under the new
+     query. */
+  function clearResults(tab) {
+    try {
+      var yasr = tab.yasr;
+      if (!yasr) return;
+      yasr.results = null;
+      if (yasr.resultsEl) yasr.resultsEl.innerHTML = '';
+      if (tab.persistentJson && tab.persistentJson.yasr) {
+        tab.persistentJson.yasr.response = undefined;
+      }
+      if (typeof yasr.drawHeader === 'function') yasr.drawHeader();
+    } catch (e) {
+      /* cosmetic only — never let this break loading the query */
+    }
+  }
+
+  function load(item, scroll) {
+    var tab = yasgui.getTab();
+    clearResults(tab);
+    tab.setQuery(PREFIX + item.q);
+    tab.setName(item.title.replace(/<[^>]+>/g, ''));
+    if (scroll !== false) {
+      document.querySelector('.console').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /* ── Cards ────────────────────────────────────────────── */
+  var wrap = document.getElementById('cards');
+  QUERIES.forEach(function (item) {
+    var b = document.createElement('button');
+    b.className = 'card';
+    b.type = 'button';
+    b.innerHTML =
+      '<h3 class="card__t">' + item.title + '</h3>' +
+      '<p class="card__d">' + item.desc + '</p>' +
+      '<span class="card__cost" data-cost="' + item.cost + '">' +
+        (item.cost === 'scan' ? 'full scan' : 'instant') +
+      '</span>';
+    b.addEventListener('click', function () { load(item); });
+    wrap.appendChild(b);
+  });
+
+  load(QUERIES[0], false);
+})();
+</script>
+</body>
+</html>

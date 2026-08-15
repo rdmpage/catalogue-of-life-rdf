@@ -4,3 +4,7 @@
 /gbif-col-mapping/gbif-col265.tsv
 /oxigraph/
 /1524b38a-2939-466f-b5df-ba4c22ecc5d9/
+
+# Generated RDF — regenerate with the PHP scripts, never commit (10GB+)
+*.nt
+*.nt.zst

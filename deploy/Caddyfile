@@ -1,0 +1,110 @@
+# Caddy front end for the read-only Oxigraph SPARQL endpoint.
+#
+# Replace sparql.example.org with your hostname before deploying. Caddy will
+# provision and renew a Let's Encrypt certificate for it automatically, so the
+# DNS A/AAAA record must already point at this host.
+
+{
+	email rdmpage@gmail.com
+
+	servers {
+		timeouts {
+			read_header 5s
+			read_body 10s
+			# Backstop for slow clients draining a large result set. Oxigraph
+			# 0.4.2 has no --query-timeout of its own, so every time limit on
+			# this endpoint lives here.
+			write 300s
+			idle 120s
+		}
+	}
+}
+
+sparql.example.org {
+	log {
+		output file /var/log/caddy/sparql.log {
+			roll_size 100MiB
+			roll_keep 10
+		}
+		format json
+	}
+
+	encode zstd gzip
+
+	# --- CORS ---------------------------------------------------------------
+	# Handled entirely here. Do NOT also pass --cors to oxigraph: both layers
+	# would emit Access-Control-Allow-Origin and browsers reject the duplicate.
+	@preflight method OPTIONS
+	handle @preflight {
+		header {
+			Access-Control-Allow-Origin "*"
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Headers "Content-Type, Accept"
+			Access-Control-Max-Age "86400"
+		}
+		respond 204
+	}
+
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Expose-Headers "Content-Type, Content-Length"
+		# Oxigraph's bundled UI is same-origin only; no external assets needed.
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# --- Write paths --------------------------------------------------------
+	# serve-read-only already refuses these at the engine, so this is defence in
+	# depth: it also stops the requests burning a backend connection at all.
+	@writes path /update /update/* /store /store/*
+	handle @writes {
+		respond "This endpoint is read-only." 403
+	}
+
+	@bad_method not method GET POST OPTIONS HEAD
+	handle @bad_method {
+		respond "Method not allowed." 405
+	}
+
+	# --- Crawler control ----------------------------------------------------
+	# A public SPARQL endpoint gets crawled hard. This does not stop anything
+	# hostile, but it keeps well-behaved bots from generating query load.
+	handle /robots.txt {
+		header Content-Type "text/plain"
+		respond "User-agent: *\nDisallow: /\n" 200
+	}
+
+	# --- Rate limiting ------------------------------------------------------
+	# REQUIRES the caddy-ratelimit plugin, which is NOT in stock Caddy:
+	#   xcaddy build --with github.com/mholt/caddy-ratelimit
+	# Delete this block if you are running the distro Caddy package. Without it
+	# you have no protection against a single client saturating the box.
+	rate_limit {
+		zone sparql {
+			key {remote_host}
+			events 30
+			window 1m
+		}
+	}
+
+	# --- Backend ------------------------------------------------------------
+	handle {
+		request_body {
+			# SPARQL queries are small. This caps POST bodies so nobody uploads
+			# a dataset-sized payload.
+			max_size 1MB
+		}
+
+		reverse_proxy 127.0.0.1:7878 {
+			transport http {
+				dial_timeout 5s
+				# How long to wait on Oxigraph before giving up. Note the
+				# caveat in deploy/README.md: cutting the connection does not
+				# actually cancel the query inside Oxigraph.
+				read_timeout 300s
+			}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+}

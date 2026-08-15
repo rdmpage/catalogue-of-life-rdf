@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Install as a LaunchDaemon so the Mini serves after a reboot without anyone
+  logging in:
+
+    sudo cp org.catalogueoflife.oxigraph.plist /Library/LaunchDaemons/
+    sudo chown root:wheel /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
+    sudo launchctl bootstrap system /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
+
+  Restart after a data swap:
+
+    sudo launchctl kickstart -k system/org.catalogueoflife.oxigraph
+
+  Stop it:
+
+    sudo launchctl bootout system/org.catalogueoflife.oxigraph
+
+  Adjust the --location path and UserName for the Mini's account. You do NOT
+  need to stop the service to load data — load-mini.sh builds into the idle
+  slot while this one keeps serving.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>org.catalogueoflife.oxigraph</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/oxigraph</string>
+		<string>serve-read-only</string>
+		<!-- A symlink to store-a or store-b, swapped by load-mini.sh so the
+		     endpoint stays up during a reload. Oxigraph resolves it at open
+		     time, so a swap takes effect on restart. -->
+		<string>--location</string>
+		<string>/Users/rpage/Development/catalogue-of-life-rdf/oxigraph/current</string>
+		<!-- Loopback only. cloudflared is the sole route in from outside. -->
+		<string>--bind</string>
+		<string>127.0.0.1:7878</string>
+		<!-- Federated callers cannot know your graph names; without this a
+		     named-graph load returns zero rows instead of erroring. -->
+		<string>--union-default-graph</string>
+	</array>
+
+	<key>UserName</key>
+	<string>rpage</string>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/rpage/Development/catalogue-of-life-rdf</string>
+
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+
+	<!-- RocksDB keeps many .sst files open; the store has ~550 of them. -->
+	<key>SoftResourceLimits</key>
+	<dict>
+		<key>NumberOfFiles</key>
+		<integer>65536</integer>
+	</dict>
+
+	<key>StandardOutPath</key>
+	<string>/Users/rpage/Library/Logs/oxigraph.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/rpage/Library/Logs/oxigraph.err.log</string>
+</dict>
+</plist>

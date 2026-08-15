@@ -1,0 +1,137 @@
+# Caddy for the Mac Mini proof of concept.
+#
+# Plain HTTP on loopback: Cloudflare terminates TLS at the edge and cloudflared
+# carries the request to this port, so Caddy does no certificate work here.
+# Its job is CORS, blocking writes, and capping request size.
+#
+#   brew install caddy
+#   cp Caddyfile /opt/homebrew/etc/Caddyfile
+#   brew services start caddy
+
+{
+	# No public listener, so no ACME and no admin surface needed.
+	auto_https off
+	admin off
+
+	servers {
+		timeouts {
+			read_header 5s
+			read_body 10s
+			# Cloudflare's free plan gives up on the origin at 100s and returns
+			# a 524, so there is no point letting a query run longer than that.
+			write 90s
+			idle 120s
+		}
+	}
+}
+
+:8080 {
+	log {
+		output file /Users/rpage/Library/Logs/caddy-sparql.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+	}
+
+	encode zstd gzip
+
+	# --- CORS ---------------------------------------------------------------
+	# Only here. Do NOT also pass --cors to oxigraph: two layers both setting
+	# Access-Control-Allow-Origin makes browsers reject the response, and the
+	# error message gives no hint as to the cause.
+	@preflight method OPTIONS
+	handle @preflight {
+		header {
+			Access-Control-Allow-Origin "*"
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Headers "Content-Type, Accept"
+			Access-Control-Max-Age "86400"
+		}
+		respond 204
+	}
+
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Expose-Headers "Content-Type, Content-Length"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# --- Write paths --------------------------------------------------------
+	# serve-read-only refuses these anyway; blocking here keeps them off the
+	# backend entirely.
+	@writes path /update /update/* /store /store/*
+	handle @writes {
+		respond "This endpoint is read-only." 403
+	}
+
+	@bad_method not method GET POST OPTIONS HEAD
+	handle @bad_method {
+		respond "Method not allowed." 405
+	}
+
+	handle /robots.txt {
+		header Content-Type "text/plain"
+		respond "User-agent: *\nDisallow: /\n" 200
+	}
+
+	# --- SPARQL -------------------------------------------------------------
+	handle /query* {
+		request_body {
+			max_size 256KB
+		}
+
+		reverse_proxy 127.0.0.1:7878 {
+			transport http {
+				dial_timeout 5s
+				read_timeout 90s
+			}
+		}
+	}
+
+	# --- Landing page -------------------------------------------------------
+	# (federation shim is a separate loopback site block, below)
+	# Replaces Oxigraph's bare built-in UI with the demo page. Edit the path to
+	# wherever you checked the repo out on the Mini.
+	handle {
+		root * /Users/rpage/Development/catalogue-of-life-rdf/deploy/macos/site
+		file_server
+	}
+}
+
+# ── QLever federation shim ───────────────────────────────────────────────────
+#
+# Oxigraph cannot federate to QLever directly. Oxigraph sends
+#   Accept: application/sparql-results+json, application/sparql-results+xml
+# (hardcoded at lib/oxigraph/src/sparql/http.rs:43). QLever honours the first
+# preference and returns JSON with a trailing top-level "meta" member, which
+# Oxigraph's parser rejects with "Unexpected JSON after the end of the bindings
+# array" (lib/sparesults/src/json.rs:861 — still present in main, so upgrading
+# does not help).
+#
+# QLever's XML output is clean, and Oxigraph accepts XML. So: rewrite the one
+# header. Verified working — see FEDERATION.md.
+#
+# Loopback only. Oxigraph makes this call server-side, so remote users' queries
+# still work; they just write SERVICE <http://127.0.0.1:9999/>.
+#
+# The upstream is fixed, so this is not an open proxy: queries can only reach
+# the one public GBIF endpoint.
+
+# DISABLED. Do not enable until the interaction with QLever is understood and
+# deliberately chosen — in particular what it means to expose a path that
+# forwards arbitrary SPARQL to a third-party endpoint on the server's behalf.
+# Uncommenting starts the shim as soon as Caddy reloads.
+#
+# :9999 {
+# 	reverse_proxy https://qlever.dev {
+# 		header_up Host qlever.dev
+# 		header_up Accept "application/sparql-results+xml"
+# 		rewrite /api/gbif
+# 		transport http {
+# 			tls
+# 			read_timeout 120s
+# 		}
+# 	}
+# }

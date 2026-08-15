@@ -1,0 +1,61 @@
+[Unit]
+Description=Oxigraph SPARQL server (read-only) for Catalogue of Life RDF
+Documentation=https://github.com/oxigraph/oxigraph
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=oxigraph
+Group=oxigraph
+
+# --location points at a symlink so oxigraph-load.sh can stage a new store
+# and swap it in with only a service restart of downtime (see deploy/README.md).
+#
+# --union-default-graph makes queries see every named graph without an explicit
+# GRAPH clause. Keep it: federated callers cannot know your graph names, so
+# without it a SERVICE query against a named-graph load silently returns nothing.
+#
+# Bound to loopback on purpose. Caddy is the only public listener.
+ExecStart=/usr/local/bin/oxigraph serve-read-only \
+    --location /var/lib/oxigraph/current \
+    --bind 127.0.0.1:7878 \
+    --union-default-graph
+
+Restart=on-failure
+RestartSec=5s
+
+# RocksDB opens a lot of .sst files at once; the 19 GB store has ~550 of them.
+LimitNOFILE=65536
+
+# Leave headroom for the kernel page cache, which is what actually makes
+# Oxigraph fast. Tune to the box: roughly 75% of total RAM.
+MemoryMax=48G
+
+# --- Hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+# ProtectSystem=strict makes the whole filesystem read-only, so the store
+# directory has to be granted back explicitly. RocksDB's read-only open still
+# wants to touch LOG in the store directory.
+ReadWritePaths=/var/lib/oxigraph
+
+[Install]
+WantedBy=multi-user.target
