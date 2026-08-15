@@ -2,7 +2,7 @@
 
 A version of the Catalogue of Life in RDF.
 
-The Catalogue of Life web site often has JSON-LD embedded, some examples are in [col-website-jsonld](col-website-jsonld). For more examples, and a survey of JSON-LD in biodiversity-related web sites, see also [https://github.com/rdmpage/wild-json-ld](JSON-LD in the wild).
+The Catalogue of Life web site often has JSON-LD embedded, some examples are in [col-website-jsonld](col-website-jsonld). For more examples, and a survey of JSON-LD in biodiversity-related web sites, see also [JSON-LD in the wild](https://github.com/rdmpage/wild-json-ld).
 
 However, what I want is a complete version of the Catalogue of Life in RDF (without having to scrap all the web pages!). 
 
