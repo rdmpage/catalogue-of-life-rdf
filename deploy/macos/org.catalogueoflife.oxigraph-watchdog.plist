@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Memory watchdog for the Oxigraph daemon. Runs every 30 seconds and kills
+  Oxigraph if its RSS exceeds the ceiling; KeepAlive on the main daemon then
+  restarts it clean.
+
+  Install:
+    sudo cp org.catalogueoflife.oxigraph-watchdog.plist /Library/LaunchDaemons/
+    sudo chown root:wheel /Library/LaunchDaemons/org.catalogueoflife.oxigraph-watchdog.plist
+    sudo launchctl bootstrap system /Library/LaunchDaemons/org.catalogueoflife.oxigraph-watchdog.plist
+
+  Check it is alive:
+    tail -f /Users/rpage/oxigraph-watchdog.log
+
+  LIMIT_MB is the ceiling in megabytes. 2048 is generous — Oxigraph idles
+  around 45-130 MB and ordinary queries stay well under — while being far below
+  anything that would trouble a 16 GB machine.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>org.catalogueoflife.oxigraph-watchdog</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/rpage/Sites/iphylo/col/deploy/macos/oxigraph-watchdog.sh</string>
+	</array>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>LIMIT_MB</key>
+		<string>2048</string>
+	</dict>
+
+	<key>UserName</key>
+	<string>rpage</string>
+
+	<key>StartInterval</key>
+	<integer>30</integer>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>StandardErrorPath</key>
+	<string>/Users/rpage/oxigraph-watchdog.err.log</string>
+</dict>
+</plist>
