@@ -56,6 +56,12 @@
 	<key>WorkingDirectory</key>
 	<string>/Users/rpage/oxigraph-col</string>
 
+	<!-- Lose CPU contention to Apache. If a heavy query pins the cores, the
+	     other sites on this host stay responsive. Costs the SPARQL endpoint
+	     some speed under load, which is the right trade here. -->
+	<key>Nice</key>
+	<integer>5</integer>
+
 	<key>RunAtLoad</key>
 	<true/>
 	<key>KeepAlive</key>
