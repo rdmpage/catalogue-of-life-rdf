@@ -16,7 +16,7 @@
 set -euo pipefail
 
 SRC="${1:-.}"
-BASE="${BASE:-/Users/rpage/Development/catalogue-of-life-rdf/oxigraph}"
+BASE="${BASE:-/Users/rpage/oxigraph-col}"   # outside the web root, on purpose
 OXIGRAPH="${OXIGRAPH:-/opt/homebrew/bin/oxigraph}"
 LABEL=org.catalogueoflife.oxigraph
 PLIST="/Library/LaunchDaemons/$LABEL.plist"

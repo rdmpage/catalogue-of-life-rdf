@@ -95,7 +95,12 @@
 	# Replaces Oxigraph's bare built-in UI with the demo page. Edit the path to
 	# wherever you checked the repo out on the Mini.
 	handle {
-		root * /Users/rpage/Development/catalogue-of-life-rdf/deploy/macos/site
+		# index.html lives at the repo root. NOTE: serving a git checkout
+		# directly exposes .git, the PHP generators and the data files —
+		# apache-col-sparql.conf handles that with a default-deny; this
+		# Caddyfile does not. It is kept only as a starting point for a host
+		# that is not already serving a site.
+		root * /Users/rpage/Development/catalogue-of-life-rdf
 		file_server
 	}
 }

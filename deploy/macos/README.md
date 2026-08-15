@@ -13,6 +13,27 @@ Use `apache-col-sparql.conf`. Apache already terminates TLS and is already
 externally reachable, so **neither Caddy nor a Cloudflare tunnel is needed
 here** — they would only duplicate what Apache does.
 
+**The git checkout is the web directory.** Clone straight into place:
+
+```sh
+git clone https://github.com/rdmpage/catalogue-of-life-rdf.git ~/Sites/iphylo/col
+```
+
+`index.html` sits at the repo root, so `https://iphylo.org/col/` just works and
+a `git pull` deploys. That convenience has a cost: a checkout in a web root
+contains `.git/`, the PHP generators, the 5 GB ColDP dump and ~13 GB of `.nt`.
+The Apache conf therefore **denies everything and allows only `index.html`** —
+an allow-list, because a deny-list leaves every new file public until someone
+remembers to block it.
+
+The sharpest edge is the PHP: if mod_php is active, fetching
+`https://iphylo.org/col/taxa.php` would *execute* it and start emitting millions
+of triples. The conf blocks `.php` twice over — `SetHandler none` plus a denial.
+
+The Oxigraph store lives at `~/oxigraph-col`, outside the web root by design.
+Keeping a 24 GB RocksDB directory out of the served tree beats trusting a rule
+to hide it.
+
 Oxigraph still binds to loopback only. Apache is the sole public listener, and
 it is what blocks the write paths and sets CORS.
 
@@ -121,16 +142,15 @@ separate machine — but the plist expects the new layout.
 ## Setup
 
 ```sh
-# 1. Oxigraph as a daemon (edit paths/UserName in the plist first)
+# 0. Clone into place; the checkout is the web directory
+git clone https://github.com/rdmpage/catalogue-of-life-rdf.git ~/Sites/iphylo/col
+
+# 1. Oxigraph as a daemon (edit UserName in the plist first)
 sudo cp org.catalogueoflife.oxigraph.plist /Library/LaunchDaemons/
 sudo chown root:wheel /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
 sudo launchctl bootstrap system /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
 
-# 2. Landing page
-mkdir -p ~/Sites/iphylo/col
-cp site/index.html ~/Sites/iphylo/col/
-
-# 3. Apache — include the conf from the iphylo.org vhost, then:
+# 2. Apache — include the conf from the iphylo.org vhost, then:
 apachectl configtest
 sudo apachectl graceful
 ```

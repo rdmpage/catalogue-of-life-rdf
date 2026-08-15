@@ -16,9 +16,13 @@
 
     sudo launchctl bootout system/org.catalogueoflife.oxigraph
 
-  Adjust the --location path and UserName for the Mini's account. You do NOT
-  need to stop the service to load data — load-mini.sh builds into the idle
-  slot while this one keeps serving.
+  Adjust UserName for the Mini's account. You do NOT need to stop the service
+  to load data — load-mini.sh builds into the idle slot while this one keeps
+  serving.
+
+  The store lives at ~/oxigraph-col, deliberately outside ~/Sites/iphylo: the
+  git checkout is the web root, so anything inside it is one Apache
+  misconfiguration away from being downloadable.
 -->
 <plist version="1.0">
 <dict>
@@ -31,10 +35,14 @@
 		<string>serve-read-only</string>
 		<!-- A symlink to store-a or store-b, swapped by load-mini.sh so the
 		     endpoint stays up during a reload. Oxigraph resolves it at open
-		     time, so a swap takes effect on restart. -->
+		     time, so a swap takes effect on restart.
+
+		     Deliberately OUTSIDE ~/Sites/iphylo: the checkout is the web root,
+		     and keeping the store out of it is safer than trusting a deny
+		     rule to hide a 24 GB RocksDB directory. -->
 		<string>--location</string>
-		<string>/Users/rpage/Development/catalogue-of-life-rdf/oxigraph/current</string>
-		<!-- Loopback only. cloudflared is the sole route in from outside. -->
+		<string>/Users/rpage/oxigraph-col/current</string>
+		<!-- Loopback only. Apache is the sole route in from outside. -->
 		<string>--bind</string>
 		<string>127.0.0.1:7878</string>
 		<!-- Federated callers cannot know your graph names; without this a
@@ -46,7 +54,7 @@
 	<string>rpage</string>
 
 	<key>WorkingDirectory</key>
-	<string>/Users/rpage/Development/catalogue-of-life-rdf</string>
+	<string>/Users/rpage/oxigraph-col</string>
 
 	<key>RunAtLoad</key>
 	<true/>

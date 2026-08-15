@@ -75,7 +75,8 @@ up from 19.4 GiB. Re-measure rather than trusting it.
 | `taxa.php`, `references.php`, `sources.php`, `gbif-col.php` | Generate N-Triples from the ColDP dump. Share helpers in `shared.php`. |
 | `2026-05-15_xr_coldp/` | ColDP source data, 5.0 GB. **Gitignored — will not be in a fresh checkout.** Copy it separately. |
 | `*.nt` | Generated RDF, ~13 GB. Gitignored. Regenerate with the PHP scripts. |
-| `oxigraph/` | RocksDB store. Gitignored. Rebuild, never copy between machines. |
+| `oxigraph/` | RocksDB store (dev only). Gitignored. On the Mini it lives at `~/oxigraph-col`, outside the web root. Rebuild, never copy between machines. |
+| `index.html` | The SPARQL web interface. At the repo root because the checkout is served directly on the Mini. |
 | `deploy/` | Hosting configs. Linux (systemd + Caddy) at the top; macOS (launchd + **Apache**) in `deploy/macos/`. |
 | `deploy/FEDERATION.md` | Everything learned about Oxigraph↔QLever federation. |
 | `col-website-jsonld/` | Examples of JSON-LD scraped from the CoL website. |
@@ -157,9 +158,18 @@ QLever before the server issues outbound SPARQL to a third party on behalf of
 whoever queries the endpoint. `deploy/FEDERATION.md` explains what it did and why
 it was needed.
 
-`deploy/macos/site/index.html` is a landing page with live counts, a model
-diagram and example queries, deployed to `~/Sites/iphylo/col/`. It derives its
-SPARQL endpoint from its own URL, so it works at any mount point without edits. Style brief: **understated,
+**On the Mini the git checkout *is* the web directory** — cloned to
+`~/Sites/iphylo/col`, so `index.html` at the repo root is served at
+`https://iphylo.org/col/` and a `git pull` deploys. It derives its SPARQL
+endpoint from its own URL, so it works at any mount point without edits.
+
+Because of that, `apache-col-sparql.conf` **denies everything in the checkout
+and allows only `index.html`**. If you add a file that should be public, add an
+explicit allow — do not switch it to a deny-list. `.php` is blocked twice over:
+the generators read the ColDP dump and emit millions of triples, so an executed
+`taxa.php` over HTTP would be genuinely bad.
+
+The Oxigraph store lives at `~/oxigraph-col`, outside the web root by design. Style brief: **understated,
 Hugging Face-like**. An earlier ornate version was rejected — keep it plain.
 Note the diagram's counts are hardcoded in the SVG and will go stale after the
 rebuild; the header stats fetch live.
