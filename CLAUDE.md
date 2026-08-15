@@ -76,7 +76,7 @@ up from 19.4 GiB. Re-measure rather than trusting it.
 | `2026-05-15_xr_coldp/` | ColDP source data, 5.0 GB. **Gitignored — will not be in a fresh checkout.** Copy it separately. |
 | `*.nt` | Generated RDF, ~13 GB. Gitignored. Regenerate with the PHP scripts. |
 | `oxigraph/` | RocksDB store. Gitignored. Rebuild, never copy between machines. |
-| `deploy/` | Hosting configs. Linux (systemd + Caddy) at the top, macOS (launchd + Caddy) in `deploy/macos/`. |
+| `deploy/` | Hosting configs. Linux (systemd + Caddy) at the top; macOS (launchd + **Apache**) in `deploy/macos/`. |
 | `deploy/FEDERATION.md` | Everything learned about Oxigraph↔QLever federation. |
 | `col-website-jsonld/` | Examples of JSON-LD scraped from the CoL website. |
 
@@ -139,11 +139,17 @@ rebuild; treat these as orders of magnitude.
 
 ## Deployment
 
-`deploy/README.md` (Linux) and `deploy/macos/README.md` (Mac Mini) are current
-and self-contained. Both use read-only Oxigraph on loopback behind Caddy, with
-A/B store slots so a reload costs one service restart rather than the length of a
-bulk load. The Mini has ~500 GB free; the laptop did not, which is why the work
-moved.
+`deploy/README.md` (Linux/Hetzner) and `deploy/macos/README.md` (Mac Mini) are
+current and self-contained. Both run read-only Oxigraph on loopback behind a
+reverse proxy, with A/B store slots so a reload costs one service restart rather
+than the length of a bulk load. The Mini has ~500 GB free; the laptop did not,
+which is why the work moved.
+
+**On the Mini the proxy is the existing Apache**, not Caddy — iphylo.org is
+already served from that machine with TLS, so `apache-col-sparql.conf` publishes
+the endpoint at `https://iphylo.org/col/query` with the page at `/col/`. The
+`Caddyfile` there is a standalone alternative, unused. No Cloudflare tunnel is
+involved.
 
 **The QLever federation shim in `deploy/macos/Caddyfile` is commented out
 deliberately. Do not enable it.** Rod wants to understand the interaction with
@@ -152,7 +158,8 @@ whoever queries the endpoint. `deploy/FEDERATION.md` explains what it did and wh
 it was needed.
 
 `deploy/macos/site/index.html` is a landing page with live counts, a model
-diagram and example queries, served by Caddy at `/`. Style brief: **understated,
+diagram and example queries, deployed to `~/Sites/iphylo/col/`. It derives its
+SPARQL endpoint from its own URL, so it works at any mount point without edits. Style brief: **understated,
 Hugging Face-like**. An earlier ornate version was rejected — keep it plain.
 Note the diagram's counts are hardcoded in the SVG and will go stale after the
 rebuild; the header stats fetch live.

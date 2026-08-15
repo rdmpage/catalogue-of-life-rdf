@@ -1,16 +1,37 @@
 # Mac Mini proof of concept
 
-Read-only Oxigraph on a Mac Mini M1 / 16 GB, exposed through a Cloudflare
-Tunnel. No port forwarding, no dynamic DNS, no open inbound ports, and your
-home IP stays hidden.
+Read-only Oxigraph on the Mac Mini, published through the Apache that already
+serves iphylo.org.
 
 ```
-visitor ──HTTPS──> Cloudflare edge ──tunnel──> cloudflared ──> Caddy :8080 ──> oxigraph :7878
+visitor ──HTTPS──> Apache (iphylo.org) ──proxy──> oxigraph 127.0.0.1:7878
+                        │
+                        └── serves ~/Sites/iphylo/col/index.html
 ```
 
-Everything on the Mini listens on loopback only. `cloudflared` makes an
-*outbound* connection to Cloudflare, which is why nothing needs to be opened on
-your router.
+Use `apache-col-sparql.conf`. Apache already terminates TLS and is already
+externally reachable, so **neither Caddy nor a Cloudflare tunnel is needed
+here** — they would only duplicate what Apache does.
+
+Oxigraph still binds to loopback only. Apache is the sole public listener, and
+it is what blocks the write paths and sets CORS.
+
+The endpoint lands at `https://iphylo.org/col/query`, with the landing page at
+`https://iphylo.org/col/`. The page derives its endpoint from its own URL, so
+moving the prefix needs no edit to the HTML.
+
+### If you would rather not use Apache
+
+`Caddyfile` in this directory is a standalone alternative (its own TLS, its own
+listener). A Cloudflare tunnel would suit a host that is *not* already
+externally reachable. Neither applies to the Mini as currently set up.
+`deploy/` at the repo root is the Linux/systemd equivalent for a Hetzner box.
+
+### What Apache does not give you
+
+Rate limiting. `mod_ratelimit` throttles bandwidth, not request rate; that needs
+`mod_qos` or `mod_evasive`, neither of which ships with Apache. For a proof of
+concept shown to a few people that is a defensible gap — just a known one.
 
 ## Will it actually run on 16 GB?
 
@@ -31,12 +52,14 @@ Two real limits, stated plainly:
 - **No memory ceiling is available.** macOS has no cgroups, so there is no
   equivalent of systemd's `MemoryMax`. A query returning tens of millions of
   rows can push the Mini into heavy swap. Nothing in this config prevents that.
-- **No query timeout exists in Oxigraph 0.4.2.** Caddy's 90s cap ends the
-  *client's* wait, but Oxigraph keeps evaluating until it notices the closed
-  socket. A runaway query keeps burning CPU after the visitor has gone.
+- **No query timeout exists in Oxigraph 0.4.2.** Apache's `ProxyTimeout 90`
+  ends the *client's* wait, but Oxigraph keeps evaluating until it notices the
+  closed socket. A runaway query keeps burning CPU after the visitor has gone.
+  This was observed for real: 33-38% CPU with RSS still climbing three minutes
+  after the caller disconnected.
 
-For a handful of known people clicking around, both are acceptable. Neither is
-acceptable for a URL posted publicly — see "Who can reach it" below.
+For a handful of known people clicking around, both are acceptable — see
+"Who can reach it" below.
 
 ## Disk
 
@@ -93,41 +116,32 @@ portability across machines and versions is not guaranteed, and a subtly broken
 Note the layout change: the store now lives at `oxigraph/store-a` and
 `oxigraph/store-b` with `oxigraph/current` symlinked to one of them, rather than
 directly at `oxigraph/`. The dev store on the laptop is unaffected — it is a
-separate machine — but the plist and Caddyfile both expect the new layout.
+separate machine — but the plist expects the new layout.
 
 ## Setup
 
 ```sh
-brew install caddy cloudflared
-
 # 1. Oxigraph as a daemon (edit paths/UserName in the plist first)
 sudo cp org.catalogueoflife.oxigraph.plist /Library/LaunchDaemons/
 sudo chown root:wheel /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
 sudo launchctl bootstrap system /Library/LaunchDaemons/org.catalogueoflife.oxigraph.plist
 
-# 2. Caddy
-cp Caddyfile /opt/homebrew/etc/Caddyfile
-brew services start caddy
+# 2. Landing page
+mkdir -p ~/Sites/iphylo/col
+cp site/index.html ~/Sites/iphylo/col/
 
-# 3. Tunnel
-cloudflared tunnel login
-cloudflared tunnel create col-sparql
-cloudflared tunnel route dns col-sparql sparql.example.org
-# write the config below, then:
-sudo cloudflared service install
+# 3. Apache — include the conf from the iphylo.org vhost, then:
+apachectl configtest
+sudo apachectl graceful
 ```
 
-`~/.cloudflared/config.yml`:
+`apache-col-sparql.conf` lists the modules that must be enabled: `mod_proxy`,
+`mod_proxy_http`, `mod_headers`, `mod_rewrite`. On macOS's bundled Apache these
+are commented out in `/etc/apache2/httpd.conf` by default; Homebrew's lives at
+`/opt/homebrew/etc/httpd/httpd.conf`.
 
-```yaml
-tunnel: col-sparql
-credentials-file: /Users/rpage/.cloudflared/<TUNNEL-UUID>.json
-
-ingress:
-  - hostname: sparql.example.org
-    service: http://127.0.0.1:8080
-  - service: http_status:404
-```
+`apachectl configtest` before `graceful` — a syntax error in an included conf
+takes the whole of iphylo.org down, not just this endpoint.
 
 **Stop the Mini sleeping**, or the endpoint vanishes mid-demo:
 
@@ -137,48 +151,44 @@ sudo pmset -a sleep 0 disksleep 0 womp 1
 
 ## Who can reach it
 
-This is the decision that matters, and it depends on what you are demonstrating.
+Open, unauthenticated, and announced to a few people — the current decision.
+Serving from iphylo.org rather than behind Cloudflare changes what that means:
 
-**If the demo is people running queries in a browser**, put Cloudflare Access in
-front of the hostname and allow a list of email addresses. Visitors get a
-one-time login link. This removes essentially every risk above, because only
-people you named can send queries at all. Zero Trust → Access → Applications,
-free for up to 50 users.
+- **No Cloudflare Access.** The email-allowlist option is not available here.
+  Apache basic auth would restrict access but breaks ordinary SPARQL clients,
+  which do not expect an auth challenge.
+- **No edge bot protection or WAF**, so crawlers will find it. `robots.txt`
+  stops only the polite ones.
+- **No 100s edge timeout.** `ProxyTimeout 90` in the conf is now the only limit,
+  and per above it bounds the client's wait rather than Oxigraph's work.
+- **No rate limiting.** See the note at the top.
+- **Your home IP is exposed** — though it already is, by virtue of iphylo.org
+  being served from this machine.
 
-**If the demo is live federation from QLever**, you cannot use Access — a
-`SERVICE` call carries no credentials and will just get an HTML login page back
-where it expected SPARQL results. The endpoint has to be open, so instead:
-
-- Turn **Bot Fight Mode off** for this hostname, or add a WAF skip rule.
-  Otherwise Cloudflare will challenge QLever's requests and federation fails
-  with a confusing HTML-instead-of-XML error.
-- Confirm first that QLever's public instance will issue `SERVICE` to an
-  arbitrary external host. Public endpoints often restrict outbound federation
-  as an SSRF precaution, and if it is blocked, none of this setup is the reason
-  the demo fails.
-- Expect the 100s Cloudflare origin timeout (524) to be your effective query
-  limit.
-
-Given the 18s scan figure and no way to cap memory, I would run the browser
-demo behind Access, and test QLever federation as a separate, scheduled,
-watched-live exercise rather than leaving an open endpoint running on a home
-machine indefinitely.
+Given no memory ceiling and no real query timeout, the honest summary is that
+one unbounded query from a stranger can make the Mini unhappy. That is an
+acceptable risk for a proof of concept with a small audience; it would not be
+for a URL posted widely. If it does become a problem, the lever with the best
+ratio of effort to effect is putting iphylo.org behind Cloudflare's free tier
+and enabling a rate-limiting rule — no change to any of this config.
 
 ## Checks
 
 ```sh
-# local, bypassing tunnel and Caddy
+# local, bypassing Apache
 curl -sG http://127.0.0.1:7878/query \
   --data-urlencode 'query=SELECT * WHERE { ?s ?p ?o } LIMIT 1' \
   -H 'Accept: application/sparql-results+json'
 
-# through Caddy
-curl -sG http://127.0.0.1:8080/query --data-urlencode 'query=ASK { ?s ?p ?o }'
+# through Apache
+curl -sG https://iphylo.org/col/query --data-urlencode 'query=ASK { ?s ?p ?o }'
 
 # writes refused
-curl -si -X POST http://127.0.0.1:8080/update \
+curl -si -X POST https://iphylo.org/col/update \
   --data-urlencode 'update=DROP ALL' | head -1   # expect 403
 
-# end to end
-curl -sG https://sparql.example.org/query --data-urlencode 'query=ASK { ?s ?p ?o }'
+# CORS header present exactly once
+curl -sI -G https://iphylo.org/col/query \
+  --data-urlencode 'query=ASK { ?s ?p ?o }' | grep -ci access-control-allow-origin
+# expect 1 — a 2 means --cors got passed to Oxigraph as well
 ```

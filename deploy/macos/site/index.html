@@ -504,7 +504,11 @@ footer code { font-size: 12px; }
   ];
 
   /* ── Endpoint ─────────────────────────────────────────── */
-  var ENDPOINT = window.location.origin + '/query';
+  /* Derived from this page's own directory, not the site root, so the page
+     works wherever it is mounted — https://iphylo.org/col/ -> /col/query,
+     or / -> /query. Strips any filename from the path. */
+  var ENDPOINT = window.location.origin +
+                 window.location.pathname.replace(/[^/]*$/, '') + 'query';
   document.getElementById('endpoint').textContent = ENDPOINT;
 
   document.getElementById('copy').addEventListener('click', function () {
