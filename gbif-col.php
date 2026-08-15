@@ -2,7 +2,6 @@
 
 // Mapping between legacy GBIF taon ids and CoL ids
 
-
 error_reporting(E_ALL);
 
 require_once(__DIR__ . '/shared.php');
