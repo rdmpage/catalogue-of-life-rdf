@@ -146,6 +146,47 @@ SELECT ?name ?link WHERE {
 Links hang off the *name*, not the taxon. Targets include ITIS, BOLD,
 MolluscaBase and Index Fungorum.
 
+### Federated query to BHL
+
+This query needs to be run on QLever as Oxigraph does not support passing values between services.
+
+Endpoint https://koetai.semscape.org/u/0000-0001-9773-4008/bhl/sparql
+
+```
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX bibo:    <http://purl.org/ontology/bibo/>
+PREFIX bhl:     <https://www.biodiversitylibrary.org/vocab/>
+PREFIX :        <https://schema.org/>
+
+SELECT ?sciName ?page ?pageNumber ?date ?title
+WHERE {
+  SERVICE <https://iphylo.org/col/query> {
+    SELECT ?sciName ?url WHERE {
+      # start from :url (only 293k triples), filter, THEN join back to names
+      { SELECT ?ref ?url WHERE {
+          ?ref :url ?url .
+          FILTER(REGEX(STR(?url),
+                 "^https?://(www\\.)?biodiversitylibrary\\.org/page/[0-9]+")) } }
+      ?name :isBasedOn ?ref ;
+            :name      ?sciName .
+    }
+  }
+
+  # normalise http/no-www variants onto the canonical page IRI
+  BIND(IRI(REPLACE(STR(?url),
+       "^https?://(www\\.)?biodiversitylibrary\\.org/page/([0-9]+).*$",
+       "https://www.biodiversitylibrary.org/page/$2")) AS ?page)
+
+  ?page a bibo:Page ;
+        dcterms:isPartOf ?item .
+  OPTIONAL { ?page bhl:pageNumber ?pageNumber }
+  OPTIONAL { ?page dcterms:date   ?date }
+  OPTIONAL { ?item dcterms:isPartOf ?bib . ?bib dcterms:title ?title }
+}
+```
+
+
+
 ### Species described since 2015, with DOIs
 
 ```sparql
