@@ -146,6 +146,21 @@ SELECT ?name ?link WHERE {
 Links hang off the *name*, not the taxon. Targets include ITIS, BOLD,
 MolluscaBase and Index Fungorum.
 
+### Simple BHL link query
+
+```
+PREFIX : <https://schema.org/>
+SELECT *
+WHERE {
+  ?work :url ?url .
+  ?work :name ?title .
+  ?scientificName :isBasedOn ?work .
+  ?scientificName :name ?name .
+  FILTER(CONTAINS(STR(?url), "biodiversitylibrary.org"))
+}
+LIMIT 100
+```
+
 ### Federated query to BHL
 
 This query needs to be run on QLever as Oxigraph does not support passing values between services.
@@ -184,6 +199,45 @@ WHERE {
   OPTIONAL { ?item dcterms:isPartOf ?bib . ?bib dcterms:title ?title }
 }
 ```
+
+Here is a version with fewer results so we don’t crash koetai
+
+```
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX bibo:    <http://purl.org/ontology/bibo/>
+PREFIX bhl:     <https://www.biodiversitylibrary.org/vocab/>
+PREFIX :        <https://schema.org/>
+
+SELECT ?name ?sciName ?page ?pageNumber ?date ?title
+WHERE {
+  SERVICE <https://iphylo.org/col/query> {
+    SELECT ?name ?sciName ?url WHERE {
+      # start from :url (only 293k triples), filter, THEN join back to names
+      { SELECT ?ref ?url WHERE {
+          ?ref :url ?url .
+          FILTER(REGEX(STR(?url),
+                 "^https?://(www\\.)?biodiversitylibrary\\.org/page/[0-9]+")) } }
+      ?name :isBasedOn ?ref ;
+            :name      ?sciName .
+      ?taxon :scientificName ?name .
+            
+    }
+LIMIT 100
+  }
+
+  # normalise http/no-www variants onto the canonical page IRI
+  BIND(IRI(REPLACE(STR(?url),
+       "^https?://(www\\.)?biodiversitylibrary\\.org/page/([0-9]+).*$",
+       "https://www.biodiversitylibrary.org/page/$2")) AS ?page)
+
+  ?page a bibo:Page ;
+        dcterms:isPartOf ?item .
+  OPTIONAL { ?page bhl:pageNumber ?pageNumber }
+  OPTIONAL { ?page dcterms:date   ?date }
+  OPTIONAL { ?item dcterms:isPartOf ?bib . ?bib dcterms:title ?title }
+}
+```
+
 
 
 

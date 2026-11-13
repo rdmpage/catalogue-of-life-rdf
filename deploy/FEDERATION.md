@@ -36,7 +36,8 @@ returns clean results. It is a results-format incompatibility:
 - QLever's SPARQL-JSON has three top-level members: `head`, `results`, **`meta`**
   (`{"query-time-ms": 217, "result-size-total": 1}`).
 - Oxigraph's parser accepts nothing after the bindings array closes
-  (`lib/sparesults/src/json.rs:861`, `JsonInnerSolutionsParserState::AfterEnd`).
+  (`lib/sparesults/src/json.rs:826-832` at tag `v0.4.2`,
+  `JsonInnerSolutionsParserState::AfterEnd`).
 
 **Upgrading will not fix this.** That code is unchanged in `main`, and the
 installed 0.4.2 is already five minor versions behind 0.5.9. An older changelog
@@ -52,7 +53,8 @@ tolerate them. Worth reporting upstream to Oxigraph.
 
 QLever's XML is clean and spec-conformant, and Oxigraph accepts XML — it just
 prefers JSON. The Accept header is hardcoded at
-`lib/oxigraph/src/sparql/http.rs:43`:
+`lib/oxigraph/src/sparql/service.rs:110-118` at tag `v0.4.2`
+(`SimpleServiceHandler::handle`):
 
 ```rust
 "application/sparql-results+json, application/sparql-results+xml"

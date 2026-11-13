@@ -11,7 +11,7 @@ I follow the JSON-LD in the web pages reasonably closely, but with an emphasis o
 
 ## Source databases
 
-GBIF source databases are instances of `schema:Dataset`.
+GBIF source databases are instances of `schema:Dataset`. Modelling closely resembles that used by CoL (see [col-website-jsonld/1005.json](col-website-jsonld/1005.json))
 
 ## References
 
@@ -19,11 +19,14 @@ RDF for references is generated from the CSL-JSON in the CoL data dump. This is 
 
 ## Taxa and taxonomic names
 
-Taxa and taxonomic names are modelled much as CoL currently does. I treat every record as an instance of `schema:Taxon`, that also has an instance of `schema:TaxonName` that has the same URI as the taxon, but with `#name` appended.
+### First attempt at modelling taxa and names
+
+Taxa and taxonomic names are modelled much as CoL currently does (see [col-website-jsonld/7VPLW.json](col-website-jsonld/7VPLW.json)). I treat every record as an instance of `schema:Taxon`, that also has an instance of `schema:TaxonName` that has the same URI as the taxon, but with `#name` appended.
 
 If a name is accepted it has a `schema:parentTaxon` that points to its parent in the classification, if not it has a `dwc:acceptedNameUsageID` that points to the accepted name.
 
 `schema:TaxonName` may include a link to the external source of the name.
+
 
 ## GBIF Backbone → Catalogue of Life (COL 26.5 XR) identifier mapping
 

@@ -1,0 +1,66 @@
+{
+    "@context": "https://schema.org/",
+    "@id": "https://www.catalogueoflife.org/data/taxon/7VPLW",
+    "@type": "Taxon",
+    "additionalType": [
+        "http://rs.tdwg.org/dwc/terms/Taxon",
+        "http://rs.tdwg.org/ontology/voc/TaxonConcept#TaxonConcept"
+    ],
+    "identifier": [
+        {
+            "@type": "PropertyValue",
+            "name": "dwc:taxonID",
+            "propertyID": "http://rs.tdwg.org/dwc/terms/taxonID",
+            "value": "7VPLW"
+        },
+        {
+            "@type": "PropertyValue",
+            "name": "col:ID",
+            "propertyID": "http://catalogueoflife.org/terms/ID",
+            "value": "7VPLW"
+        }
+    ],
+    "name": "Lernaeenicus hemiramphi Kirtisinghe, 1933",
+    "scientificName": {
+        "@type": "TaxonName",
+        "name": "Lernaeenicus hemiramphi",
+        "author": "Kirtisinghe, 1933",
+        "taxonRank": "species",
+        "isBasedOn": {
+            "@type": "ScholarlyArticle",
+            "name": "Kirtisinghe, P. (1933). Two new parasitic copepods from Ceylon. Parasitology, Cambridge, 24. https://doi.org/10.1017/s003118200002093x"
+        }
+    },
+    "taxonRank": [
+        "https://api.checklistbank.org/vocab/rank/species",
+        "species"
+    ],
+    "alternateName": [
+        "Lernaeenicus hemirhamphi Kirtisinghe, 1933"
+    ],
+    "alternateScientificName": [
+        {
+            "@type": "TaxonName",
+            "name": "Lernaeenicus hemirhamphi",
+            "author": "Kirtisinghe, 1933",
+            "taxonRank": "species"
+        }
+    ],
+    "parentTaxon": {
+        "@id": "https://www.catalogueoflife.org/data/taxon/7P9R8",
+        "@type": "Taxon",
+        "name": "Lernaeenicus Lesueur, 1824",
+        "identifier": [
+            {
+                "@type": "PropertyValue",
+                "name": "dwc:taxonID",
+                "propertyID": "http://rs.tdwg.org/dwc/terms/taxonID",
+                "value": "7P9R8"
+            }
+        ],
+        "taxonRank": [
+            "https://api.checklistbank.org/vocab/rank/genus",
+            "genus"
+        ]
+    }
+}
