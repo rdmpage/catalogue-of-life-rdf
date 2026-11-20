@@ -15,6 +15,7 @@ $debug = false;
 
 // CoL
 $basedir = '2026-05-15_xr_coldp/source';
+$basedir = '2026-10-16_XR/source';
 $files = scandir($basedir);
 
 if ($debug)

@@ -21,8 +21,10 @@ error_reporting(E_ALL);
 require_once(__DIR__ . '/shared.php');
 
 $debug = false;
+//$debug = true;
 
 $basedir = '2026-05-15_xr_coldp';
+$basedir = '2026-10-16_XR';
 
 // step 1 get dataset key
 $datsetkey = 0;
